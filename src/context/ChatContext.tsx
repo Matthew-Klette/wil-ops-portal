@@ -8,11 +8,21 @@ import { useData } from './DataContext'
 
 const BACKGROUND_POLL_MS = 6000
 const READ_STORAGE_KEY = 'wil-ops:chatLastRead'
+const TOAST_DURATION_MS = 6000
 
 interface SendMessageInput {
   applicationId: string
   senderId: string
   senderRole: Role
+  body: string
+}
+
+export interface ChatToast {
+  id: string
+  applicationId: string
+  role: Role
+  senderName: string
+  senderColor: string
   body: string
 }
 
@@ -28,6 +38,8 @@ interface ChatContextValue {
   getUnreadCount: (applicationId: string) => number
   getTotalUnreadCount: () => number
   markApplicationRead: (applicationId: string) => void
+  toasts: ChatToast[]
+  dismissToast: (id: string) => void
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined)
@@ -69,6 +81,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // recompute (and consumers to re-render) even when `messages` itself
   // didn't change — the read map lives in a ref, not state.
   const [readVersion, setReadVersion] = useState(0)
+  const [toasts, setToasts] = useState<ChatToast[]>([])
+  const toastTimeoutsRef = useRef<Map<string, number>>(new Map())
 
   // Every function exposed on the context is built with useCallback and
   // reads live data through these refs rather than closing over state
@@ -129,6 +143,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }, [mergeMessages])
 
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+    const timeoutId = toastTimeoutsRef.current.get(id)
+    if (timeoutId) {
+      window.clearTimeout(timeoutId)
+      toastTimeoutsRef.current.delete(id)
+    }
+  }, [])
+
   const notify = useCallback(
     (message: StoredMessage) => {
       const me = currentUserRef.current
@@ -141,8 +164,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-
       const application = applicationsRef.current.find((a) => a.id === message.applicationId)
       if (!application) return
       const listing = getListingRef.current(application.listingId)
@@ -152,6 +173,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (!isParticipant) return
 
       const sender = getUserByIdRef.current(message.senderId)
+
+      // In-app toast — doesn't depend on notification permission at all,
+      // so it's the reliable path; the OS notification below is a bonus
+      // on top when permission has been granted.
+      const toastId = `toast-${message.id}`
+      const toast: ChatToast = {
+        id: toastId,
+        applicationId: message.applicationId,
+        role: me.role,
+        senderName: sender?.name ?? 'Someone',
+        senderColor: sender?.initialColor ?? '#3D4552',
+        body: message.body,
+      }
+      setToasts((prev) => [...prev, toast])
+      const timeoutId = window.setTimeout(() => dismissToast(toastId), TOAST_DURATION_MS)
+      toastTimeoutsRef.current.set(toastId, timeoutId)
+
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
       const notification = new Notification(`New message from ${sender?.name ?? 'someone'}`, {
         body: message.body,
         tag: message.applicationId,
@@ -162,7 +201,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         notification.close()
       }
     },
-    [markApplicationRead],
+    [markApplicationRead, dismissToast],
   )
 
   // Deliberately mounts once: refetch/notify/mergeMessages are all stable
@@ -208,6 +247,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       window.clearInterval(pollInterval)
     }
   }, [refetch, notify, mergeMessages])
+
+  useEffect(() => {
+    const timeouts = toastTimeoutsRef.current
+    return () => {
+      timeouts.forEach((id) => window.clearTimeout(id))
+    }
+  }, [])
 
   const requestNotificationPermission = useCallback(() => {
     if (typeof Notification === 'undefined') return
@@ -319,6 +365,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       getUnreadCount,
       getTotalUnreadCount,
       markApplicationRead,
+      toasts,
+      dismissToast,
     }),
     // messages/applications/readVersion aren't read directly here — they're
     // included so this wrapper object's identity changes (re-rendering
@@ -337,9 +385,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       getUnreadCount,
       getTotalUnreadCount,
       markApplicationRead,
+      dismissToast,
       messages,
       applications,
       readVersion,
+      toasts,
     ],
   )
 

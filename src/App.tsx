@@ -3,6 +3,7 @@ import { DataProvider } from './context/DataContext'
 import { AuthProvider } from './context/AuthContext'
 import { ListingsProvider } from './context/ListingsContext'
 import { ChatProvider } from './context/ChatContext'
+import { ChatToasts } from './components/listings/ChatToasts'
 import { AppShell } from './components/shell/AppShell'
 import { ProtectedRoute } from './components/shell/ProtectedRoute'
 import { RolePicker } from './pages/RolePicker'
@@ -37,6 +38,7 @@ export default function App() {
         <AuthProvider>
           <ListingsProvider>
             <ChatProvider>
+              <ChatToasts />
               <Routes>
                 <Route path="/" element={<RolePicker />} />
 
