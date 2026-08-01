@@ -18,6 +18,7 @@ interface ChatContextValue {
   requestNotificationPermission: () => void
   getMessagesForApplication: (applicationId: string) => ChatMessage[]
   sendMessage: (input: SendMessageInput) => Promise<void>
+  refetchApplicationMessages: (applicationId: string) => Promise<void>
   setActiveApplicationId: (id: string | null) => void
 }
 
@@ -58,11 +59,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const applicationsRef = useRef(applications)
   applicationsRef.current = applications
 
+  const mergeMessages = useCallback((incoming: StoredMessage[]) => {
+    if (incoming.length === 0) return
+    setMessages((prev) => {
+      const known = new Set(prev.map((m) => m.id))
+      const fresh = incoming.filter((m) => !known.has(m.id))
+      return fresh.length === 0 ? prev : [...prev, ...fresh]
+    })
+  }, [])
+
   const refetch = useCallback(async () => {
     const [threadsRes, messagesRes] = await Promise.all([
       supabase.from('chat_threads').select('*'),
       supabase.from('chat_messages').select('*'),
     ])
+    if (threadsRes.error) console.error('chat_threads fetch failed', threadsRes.error)
+    if (messagesRes.error) console.error('chat_messages fetch failed', messagesRes.error)
     const threads = threadsRes.data ?? []
     const threadToApplication = new Map(threads.map((t: any) => [t.id, t.application_id]))
     const applicationToThread = new Map(threads.map((t: any) => [t.application_id, t.id]))
@@ -117,15 +129,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           return
         }
         const message = mapMessageRow(row, applicationId)
-        setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]))
+        mergeMessages([message])
         notify(message)
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('chat realtime channel failed to connect:', status)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [refetch, notify])
+  }, [refetch, notify, mergeMessages])
 
   const value = useMemo<ChatContextValue>(
     () => ({
@@ -141,24 +157,45 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         let threadId = applicationToThreadRef.current.get(input.applicationId)
         if (!threadId) {
           threadId = `th-${crypto.randomUUID()}`
-          await supabase.from('chat_threads').insert({ id: threadId, application_id: input.applicationId, created_at: new Date().toISOString() })
+          const { error: threadError } = await supabase
+            .from('chat_threads')
+            .insert({ id: threadId, application_id: input.applicationId, created_at: new Date().toISOString() })
+          if (threadError) throw threadError
           threadToApplicationRef.current.set(threadId, input.applicationId)
           applicationToThreadRef.current.set(input.applicationId, threadId)
         }
-        await supabase.from('chat_messages').insert({
+
+        const row = {
           id: `cm-${crypto.randomUUID()}`,
           thread_id: threadId,
           sender_id: input.senderId,
           sender_role: input.senderRole,
           body: input.body,
           timestamp: new Date().toISOString(),
-        })
+        }
+        const { error } = await supabase.from('chat_messages').insert(row)
+        if (error) throw error
+
+        // Apply locally right away rather than waiting on the realtime
+        // round-trip — the sender should never need to refresh to see
+        // their own message land.
+        mergeMessages([mapMessageRow(row, input.applicationId)])
+      },
+      refetchApplicationMessages: async (applicationId) => {
+        const threadId = applicationToThreadRef.current.get(applicationId)
+        if (!threadId) return
+        const { data, error } = await supabase.from('chat_messages').select('*').eq('thread_id', threadId)
+        if (error) {
+          console.error('chat_messages poll failed', error)
+          return
+        }
+        mergeMessages((data ?? []).map((r: any) => mapMessageRow(r, applicationId)))
       },
       setActiveApplicationId: (id) => {
         activeApplicationIdRef.current = id
       },
     }),
-    [loading, messages, notificationPermission],
+    [loading, messages, notificationPermission, mergeMessages],
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>

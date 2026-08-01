@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase'
 import type { Role } from '../../data/types'
 
 const TYPING_IDLE_MS = 2500
+const POLL_INTERVAL_MS = 3000
 
 export function ChatThread({
   applicationId,
@@ -23,9 +24,17 @@ export function ChatThread({
   currentUserRole: Role
   otherPartyLabel: string
 }) {
-  const { getMessagesForApplication, sendMessage, notificationPermission, requestNotificationPermission, setActiveApplicationId } = useChat()
+  const {
+    getMessagesForApplication,
+    sendMessage,
+    refetchApplicationMessages,
+    notificationPermission,
+    requestNotificationPermission,
+    setActiveApplicationId,
+  } = useChat()
   const [body, setBody] = useState('')
   const [otherTyping, setOtherTyping] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const messages = getMessagesForApplication(applicationId)
 
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -38,6 +47,14 @@ export function ChatThread({
     setActiveApplicationId(applicationId)
     return () => setActiveApplicationId(null)
   }, [applicationId, setActiveApplicationId])
+
+  // Realtime should deliver new messages instantly, but poll as a safety
+  // net for this specific thread so it still catches up within a few
+  // seconds if a websocket event gets dropped.
+  useEffect(() => {
+    const interval = window.setInterval(() => refetchApplicationMessages(applicationId), POLL_INTERVAL_MS)
+    return () => window.clearInterval(interval)
+  }, [applicationId, refetchApplicationMessages])
 
   useEffect(() => {
     const channel = supabase
@@ -64,11 +81,19 @@ export function ChatThread({
     window.clearTimeout(typingTimeoutRef.current)
   }
 
-  function handleSend(e: FormEvent) {
+  async function handleSend(e: FormEvent) {
     e.preventDefault()
     if (!body.trim()) return
-    sendMessage({ applicationId, senderId: currentUserId, senderRole: currentUserRole, body: body.trim() })
+    const outgoing = body.trim()
     setBody('')
+    setSendError(null)
+    try {
+      await sendMessage({ applicationId, senderId: currentUserId, senderRole: currentUserRole, body: outgoing })
+    } catch (err) {
+      console.error('Failed to send message', err)
+      setBody(outgoing)
+      setSendError("Couldn't send that — check your connection and try again.")
+    }
   }
 
   return (
@@ -118,6 +143,8 @@ export function ChatThread({
           )}
         </AnimatePresence>
       </div>
+
+      {sendError && <p className="mb-2 text-xs text-signal">{sendError}</p>}
 
       <form onSubmit={handleSend} className="mt-2 flex items-center gap-2 border-t border-fog pt-4">
         <input
