@@ -59,21 +59,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const { applications, getListing } = useListings()
   const { getUserById } = useData()
   const navigate = useNavigate()
-  const navigateRef = useRef(navigate)
-  navigateRef.current = navigate
 
   const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState<StoredMessage[]>([])
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
   )
-  // Bumped whenever read state changes, purely to force consumers of
-  // getUnreadCount/getTotalUnreadCount to re-render (the map itself lives
-  // in a ref so it survives without triggering renders on every message).
+  // Bumped whenever read state changes, purely to force the context value to
+  // recompute (and consumers to re-render) even when `messages` itself
+  // didn't change — the read map lives in a ref, not state.
   const [readVersion, setReadVersion] = useState(0)
 
-  // Refs so the realtime handlers below always see current data without
-  // having to tear down and resubscribe the channel on every state change.
+  // Every function exposed on the context is built with useCallback and
+  // reads live data through these refs rather than closing over state
+  // directly. That keeps each function's identity stable across renders —
+  // critical because a couple of them (setActiveApplicationId in
+  // particular) are used as effect dependencies elsewhere; if their
+  // identity changed every time unrelated state here changed, it could
+  // retrigger those effects in a loop that never throws, just spins the
+  // main thread (that was a real bug that shipped here previously).
   const threadToApplicationRef = useRef<Map<string, string>>(new Map())
   const applicationToThreadRef = useRef<Map<string, string>>(new Map())
   const activeApplicationIdRef = useRef<string | null>(null)
@@ -81,6 +85,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   currentUserRef.current = currentUser
   const applicationsRef = useRef(applications)
   applicationsRef.current = applications
+  const getListingRef = useRef(getListing)
+  getListingRef.current = getListing
+  const getUserByIdRef = useRef(getUserById)
+  getUserByIdRef.current = getUserById
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
+  const messagesRef = useRef<StoredMessage[]>(messages)
+  messagesRef.current = messages
   const readMapRef = useRef<Record<string, string>>(loadReadMap())
 
   const mergeMessages = useCallback((incoming: StoredMessage[]) => {
@@ -133,13 +145,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       const application = applicationsRef.current.find((a) => a.id === message.applicationId)
       if (!application) return
-      const listing = getListing(application.listingId)
+      const listing = getListingRef.current(application.listingId)
       const isParticipant =
         (me.role === 'job_seeker' && application.applicantId === me.id) ||
         (me.role === 'recruiter' && listing?.postedBy === me.id)
       if (!isParticipant) return
 
-      const sender = getUserById(message.senderId)
+      const sender = getUserByIdRef.current(message.senderId)
       const notification = new Notification(`New message from ${sender?.name ?? 'someone'}`, {
         body: message.body,
         tag: message.applicationId,
@@ -150,9 +162,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         notification.close()
       }
     },
-    [getListing, getUserById, markApplicationRead],
+    [markApplicationRead],
   )
 
+  // Deliberately mounts once: refetch/notify/mergeMessages are all stable
+  // (empty or ref-only deps), so this effect never tears down and
+  // resubscribes the realtime channel on unrelated state changes.
   useEffect(() => {
     refetch()
 
@@ -194,88 +209,138 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [refetch, notify, mergeMessages])
 
+  const requestNotificationPermission = useCallback(() => {
+    if (typeof Notification === 'undefined') return
+    Notification.requestPermission().then(setNotificationPermission)
+  }, [])
+
+  const getMessagesForApplication = useCallback(
+    (applicationId: string) =>
+      messagesRef.current.filter((m) => m.applicationId === applicationId).sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1)),
+    [],
+  )
+
+  const sendMessage = useCallback(
+    async (input: SendMessageInput) => {
+      let threadId = applicationToThreadRef.current.get(input.applicationId)
+      if (!threadId) {
+        threadId = `th-${crypto.randomUUID()}`
+        const { error: threadError } = await supabase
+          .from('chat_threads')
+          .insert({ id: threadId, application_id: input.applicationId, created_at: new Date().toISOString() })
+        if (threadError) throw threadError
+        threadToApplicationRef.current.set(threadId, input.applicationId)
+        applicationToThreadRef.current.set(input.applicationId, threadId)
+      }
+
+      const row = {
+        id: `cm-${crypto.randomUUID()}`,
+        thread_id: threadId,
+        sender_id: input.senderId,
+        sender_role: input.senderRole,
+        body: input.body,
+        timestamp: new Date().toISOString(),
+      }
+      const { error } = await supabase.from('chat_messages').insert(row)
+      if (error) throw error
+
+      // Apply locally right away rather than waiting on the realtime
+      // round-trip — the sender should never need to refresh to see their
+      // own message land.
+      mergeMessages([mapMessageRow(row, input.applicationId)])
+      markApplicationRead(input.applicationId)
+    },
+    [mergeMessages, markApplicationRead],
+  )
+
+  const clearChat = useCallback(async (applicationId: string) => {
+    const threadId = applicationToThreadRef.current.get(applicationId)
+    if (!threadId) return
+    const { error } = await supabase.from('chat_messages').delete().eq('thread_id', threadId)
+    if (error) throw error
+    setMessages((prev) => prev.filter((m) => m.applicationId !== applicationId))
+  }, [])
+
+  const refetchApplicationMessages = useCallback(
+    async (applicationId: string) => {
+      const threadId = applicationToThreadRef.current.get(applicationId)
+      if (!threadId) return
+      const { data, error } = await supabase.from('chat_messages').select('*').eq('thread_id', threadId)
+      if (error) {
+        console.error('chat_messages poll failed', error)
+        return
+      }
+      mergeMessages((data ?? []).map((r: any) => mapMessageRow(r, applicationId)))
+    },
+    [mergeMessages],
+  )
+
+  const setActiveApplicationId = useCallback(
+    (id: string | null) => {
+      activeApplicationIdRef.current = id
+      if (id) markApplicationRead(id)
+    },
+    [markApplicationRead],
+  )
+
+  const getUnreadCount = useCallback((applicationId: string) => {
+    const me = currentUserRef.current
+    if (!me) return 0
+    const lastRead = readMapRef.current[`${me.id}:${applicationId}`]
+    return messagesRef.current.filter(
+      (m) => m.applicationId === applicationId && m.senderId !== me.id && (!lastRead || m.timestamp > lastRead),
+    ).length
+  }, [])
+
+  const getTotalUnreadCount = useCallback(() => {
+    const me = currentUserRef.current
+    if (!me) return 0
+    const myApplicationIds = applicationsRef.current
+      .filter((a) => (me.role === 'job_seeker' ? a.applicantId === me.id : getListingRef.current(a.listingId)?.postedBy === me.id))
+      .map((a) => a.id)
+    return myApplicationIds.reduce((sum, id) => {
+      const lastRead = readMapRef.current[`${me.id}:${id}`]
+      return (
+        sum + messagesRef.current.filter((m) => m.applicationId === id && m.senderId !== me.id && (!lastRead || m.timestamp > lastRead)).length
+      )
+    }, 0)
+  }, [])
+
   const value = useMemo<ChatContextValue>(
     () => ({
       loading,
       notificationPermission,
-      requestNotificationPermission: () => {
-        if (typeof Notification === 'undefined') return
-        Notification.requestPermission().then(setNotificationPermission)
-      },
-      getMessagesForApplication: (applicationId) =>
-        messages.filter((m) => m.applicationId === applicationId).sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1)),
-      sendMessage: async (input) => {
-        let threadId = applicationToThreadRef.current.get(input.applicationId)
-        if (!threadId) {
-          threadId = `th-${crypto.randomUUID()}`
-          const { error: threadError } = await supabase
-            .from('chat_threads')
-            .insert({ id: threadId, application_id: input.applicationId, created_at: new Date().toISOString() })
-          if (threadError) throw threadError
-          threadToApplicationRef.current.set(threadId, input.applicationId)
-          applicationToThreadRef.current.set(input.applicationId, threadId)
-        }
-
-        const row = {
-          id: `cm-${crypto.randomUUID()}`,
-          thread_id: threadId,
-          sender_id: input.senderId,
-          sender_role: input.senderRole,
-          body: input.body,
-          timestamp: new Date().toISOString(),
-        }
-        const { error } = await supabase.from('chat_messages').insert(row)
-        if (error) throw error
-
-        // Apply locally right away rather than waiting on the realtime
-        // round-trip — the sender should never need to refresh to see
-        // their own message land.
-        mergeMessages([mapMessageRow(row, input.applicationId)])
-        markApplicationRead(input.applicationId)
-      },
-      clearChat: async (applicationId) => {
-        const threadId = applicationToThreadRef.current.get(applicationId)
-        if (!threadId) return
-        const { error } = await supabase.from('chat_messages').delete().eq('thread_id', threadId)
-        if (error) throw error
-        setMessages((prev) => prev.filter((m) => m.applicationId !== applicationId))
-      },
-      refetchApplicationMessages: async (applicationId) => {
-        const threadId = applicationToThreadRef.current.get(applicationId)
-        if (!threadId) return
-        const { data, error } = await supabase.from('chat_messages').select('*').eq('thread_id', threadId)
-        if (error) {
-          console.error('chat_messages poll failed', error)
-          return
-        }
-        mergeMessages((data ?? []).map((r: any) => mapMessageRow(r, applicationId)))
-      },
-      setActiveApplicationId: (id) => {
-        activeApplicationIdRef.current = id
-        if (id) markApplicationRead(id)
-      },
-      getUnreadCount: (applicationId) => {
-        const me = currentUserRef.current
-        if (!me) return 0
-        const lastRead = readMapRef.current[`${me.id}:${applicationId}`]
-        return messages.filter((m) => m.applicationId === applicationId && m.senderId !== me.id && (!lastRead || m.timestamp > lastRead))
-          .length
-      },
-      getTotalUnreadCount: () => {
-        const me = currentUserRef.current
-        if (!me) return 0
-        const myApplicationIds = applications
-          .filter((a) => (me.role === 'job_seeker' ? a.applicantId === me.id : getListing(a.listingId)?.postedBy === me.id))
-          .map((a) => a.id)
-        return myApplicationIds.reduce((sum, id) => {
-          const lastRead = readMapRef.current[`${me.id}:${id}`]
-          return sum + messages.filter((m) => m.applicationId === id && m.senderId !== me.id && (!lastRead || m.timestamp > lastRead)).length
-        }, 0)
-      },
+      requestNotificationPermission,
+      getMessagesForApplication,
+      sendMessage,
+      clearChat,
+      refetchApplicationMessages,
+      setActiveApplicationId,
+      getUnreadCount,
+      getTotalUnreadCount,
       markApplicationRead,
     }),
+    // messages/applications/readVersion aren't read directly here — they're
+    // included so this wrapper object's identity changes (re-rendering
+    // context consumers) whenever the underlying data actually does, while
+    // every function above keeps a stable identity across those changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loading, messages, notificationPermission, mergeMessages, markApplicationRead, applications, readVersion],
+    [
+      loading,
+      notificationPermission,
+      requestNotificationPermission,
+      getMessagesForApplication,
+      sendMessage,
+      clearChat,
+      refetchApplicationMessages,
+      setActiveApplicationId,
+      getUnreadCount,
+      getTotalUnreadCount,
+      markApplicationRead,
+      messages,
+      applications,
+      readVersion,
+    ],
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
