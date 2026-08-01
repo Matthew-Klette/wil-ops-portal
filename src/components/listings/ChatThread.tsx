@@ -9,7 +9,6 @@ import { supabase } from '../../lib/supabase'
 import type { Role } from '../../data/types'
 
 const TYPING_IDLE_MS = 2500
-const POLL_INTERVAL_MS = 3000
 
 export function ChatThread({
   applicationId,
@@ -24,14 +23,8 @@ export function ChatThread({
   currentUserRole: Role
   otherPartyLabel: string
 }) {
-  const {
-    getMessagesForApplication,
-    sendMessage,
-    refetchApplicationMessages,
-    notificationPermission,
-    requestNotificationPermission,
-    setActiveApplicationId,
-  } = useChat()
+  const { getMessagesForApplication, sendMessage, notificationPermission, requestNotificationPermission, setActiveApplicationId } =
+    useChat()
   const [body, setBody] = useState('')
   const [otherTyping, setOtherTyping] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -47,14 +40,6 @@ export function ChatThread({
     setActiveApplicationId(applicationId)
     return () => setActiveApplicationId(null)
   }, [applicationId, setActiveApplicationId])
-
-  // Realtime should deliver new messages instantly, but poll as a safety
-  // net for this specific thread so it still catches up within a few
-  // seconds if a websocket event gets dropped.
-  useEffect(() => {
-    const interval = window.setInterval(() => refetchApplicationMessages(applicationId), POLL_INTERVAL_MS)
-    return () => window.clearInterval(interval)
-  }, [applicationId, refetchApplicationMessages])
 
   useEffect(() => {
     const channel = supabase

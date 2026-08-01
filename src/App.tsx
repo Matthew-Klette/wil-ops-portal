@@ -30,11 +30,11 @@ import { ApplicationChat as JobSeekerApplicationChat } from './pages/jobseeker/A
 
 export default function App() {
   return (
-    <DataProvider>
-      <AuthProvider>
-        <ListingsProvider>
-          <ChatProvider>
-            <BrowserRouter>
+    <BrowserRouter>
+      <DataProvider>
+        <AuthProvider>
+          <ListingsProvider>
+            <ChatProvider>
               <Routes>
                 <Route path="/" element={<RolePicker />} />
 
@@ -72,10 +72,10 @@ export default function App() {
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </ChatProvider>
-        </ListingsProvider>
-      </AuthProvider>
-    </DataProvider>
+            </ChatProvider>
+          </ListingsProvider>
+        </AuthProvider>
+      </DataProvider>
+    </BrowserRouter>
   )
 }

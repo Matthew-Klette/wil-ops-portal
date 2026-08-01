@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { ChatMessage, Role } from '../data/types'
 import { useAuth } from './AuthContext'
@@ -56,6 +57,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth()
   const { applications, getListing } = useListings()
   const { getUserById } = useData()
+  const navigate = useNavigate()
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
 
   const [loading, setLoading] = useState(true)
   const [messages, setMessages] = useState<StoredMessage[]>([])
@@ -135,10 +139,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (!isParticipant) return
 
       const sender = getUserById(message.senderId)
-      new Notification(`New message from ${sender?.name ?? 'someone'}`, {
+      const notification = new Notification(`New message from ${sender?.name ?? 'someone'}`, {
         body: message.body,
         tag: message.applicationId,
       })
+      notification.onclick = () => {
+        window.focus()
+        navigateRef.current(`/${me.role}/applications/${message.applicationId}/chat`)
+        notification.close()
+      }
     },
     [getListing, getUserById, markApplicationRead],
   )
