@@ -1,14 +1,14 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useRequests } from '../context/RequestsContext'
+import { useListings } from '../context/ListingsContext'
 import type { Role } from '../data/types'
 import { IconActivity, IconChevronRight, IconGrid, IconMessage, IconShield, IconUsers } from '../components/icons'
 
 const valueProps = [
-  { icon: IconActivity, text: 'Full visibility from submission to resolution — no more "did anyone see this?"' },
-  { icon: IconMessage, text: 'Conversation lives on the request itself, not buried in someone\'s inbox' },
-  { icon: IconUsers, text: 'One shared source of truth for clients, staff, and admins alike' },
+  { icon: IconActivity, text: 'Full visibility from application to offer — no more "did anyone see this?"' },
+  { icon: IconMessage, text: 'Conversation lives on the application itself, not buried in someone\'s inbox' },
+  { icon: IconUsers, text: 'One shared source of truth for job seekers, recruiters, and admins alike' },
 ]
 
 const roleCards: {
@@ -17,37 +17,37 @@ const roleCards: {
   description: string
   icon: typeof IconGrid
   name: string
-  statKey: 'admin' | 'staff' | 'client'
+  statKey: 'admin' | 'recruiter' | 'job_seeker'
 }[] = [
   {
     role: 'admin',
     title: 'Admin',
-    description: 'Manage users, permissions, and oversee activity across the team.',
+    description: 'Manage users, permissions, and oversee activity across the platform.',
     icon: IconShield,
     name: 'Braeden Naidoo, Head of Engineering',
     statKey: 'admin',
   },
   {
-    role: 'staff',
-    title: 'Staff',
-    description: 'Work assigned requests, message the client, and track progress toward resolution.',
+    role: 'recruiter',
+    title: 'Recruiter',
+    description: 'Post job listings, review applications, and message candidates.',
     icon: IconUsers,
-    name: 'Luke Page, Senior Software Engineer',
-    statKey: 'staff',
+    name: 'Luke Page, Talent Recruiter',
+    statKey: 'recruiter',
   },
   {
-    role: 'client',
-    title: 'Client',
-    description: 'Submit new requests and follow the status of your open work with WIL-Ops.',
+    role: 'job_seeker',
+    title: 'Job Seeker',
+    description: 'Browse open roles, apply with your documents, and track every application.',
     icon: IconGrid,
-    name: 'Matt Klette, Product Owner',
-    statKey: 'client',
+    name: 'Matt Klette, Job Seeker',
+    statKey: 'job_seeker',
   },
 ]
 
 export function RolePicker() {
   const { login } = useAuth()
-  const { requests } = useRequests()
+  const { listings, applications } = useListings()
   const navigate = useNavigate()
 
   function handleSelect(role: Role) {
@@ -55,14 +55,14 @@ export function RolePicker() {
     navigate(`/${role}`)
   }
 
-  const openCount = requests.filter((r) => !['resolved', 'closed'].includes(r.status)).length
-  const staffOpenCount = requests.filter((r) => r.assignedTo === 'u-james' && !['resolved', 'closed'].includes(r.status)).length
-  const clientOpenCount = requests.filter((r) => r.clientOrgId === 'org-halden' && !['resolved', 'closed'].includes(r.status)).length
+  const openListingsCount = listings.filter((l) => l.status === 'open').length
+  const recruiterOpenCount = listings.filter((l) => l.postedBy === 'u-james' && l.status === 'open').length
+  const jobSeekerApplicationCount = applications.filter((a) => a.applicantId === 'u-priya').length
 
   const statLine: Record<string, string> = {
-    admin: `${openCount} requests open across the team`,
-    staff: `${staffOpenCount} requests assigned to you`,
-    client: `${clientOpenCount} open requests to track`,
+    admin: `${openListingsCount} open listings across the platform`,
+    recruiter: `${recruiterOpenCount} listings you're managing`,
+    job_seeker: `${jobSeekerApplicationCount} applications submitted`,
   }
 
   return (
@@ -81,7 +81,7 @@ export function RolePicker() {
             </span>
             <div className="flex flex-col gap-1">
               <span className="font-display text-3xl font-medium tracking-tight">Ledger</span>
-              <span className="font-mono text-xs uppercase tracking-wide text-paper/40">WIL-Ops · Client Portal</span>
+              <span className="font-mono text-xs uppercase tracking-wide text-paper/40">Job Board</span>
             </div>
           </div>
         </motion.div>
@@ -94,17 +94,17 @@ export function RolePicker() {
         >
           <div className="flex flex-col gap-3">
             <h1 className="max-w-sm font-display text-[34px] font-medium leading-[1.1] tracking-tight text-paper xl:text-[38px]">
-              Every request, tracked to resolution.
+              Every application, tracked to offer.
             </h1>
             <p className="max-w-sm text-[15px] leading-relaxed text-paper/55">
-              WIL-Ops replaced its email-and-spreadsheet request tracking with Ledger — one place for clients to
-              ask, staff to work, and admins to see it all.
+              Ledger connects job seekers with recruiters — post a listing, apply, chat, and track status
+              in one shared place instead of scattered emails.
             </p>
           </div>
 
           <p className="max-w-sm text-[15px] leading-relaxed text-paper/55">
-            Built for teams who are tired of chasing status over email and losing track of who owns what. Ledger
-            gives every request a home — and everyone touching it the same clear picture of where things stand.
+            Built for teams hiring without a reliable internet connection to fall back on external chat
+            apps — the messaging, documents, and status live right here.
           </p>
 
           <ul className="flex max-w-sm flex-col gap-3.5">
@@ -127,7 +127,7 @@ export function RolePicker() {
         </span>
         <div className="flex flex-col">
           <span className="font-display text-lg font-medium tracking-tight">Ledger</span>
-          <span className="font-mono text-[10px] uppercase tracking-wide text-paper/40">WIL-Ops · Client Portal</span>
+          <span className="font-mono text-[10px] uppercase tracking-wide text-paper/40">Job Board</span>
         </div>
       </div>
 
@@ -178,7 +178,7 @@ export function RolePicker() {
           </div>
 
           <div className="flex items-center border-t border-fog pt-5 text-xs text-slate-soft">
-            <span>WIL-Ops — internal tool</span>
+            <span>Ledger — internal tool</span>
           </div>
         </div>
       </div>

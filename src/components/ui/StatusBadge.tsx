@@ -1,7 +1,7 @@
 import clsx from 'clsx'
-import { statusLabels } from '../../data/mock'
-import type { RequestStatus } from '../../data/types'
-import { statusTone } from '../../lib/status'
+import { applicationStatusLabels } from '../../data/mock'
+import type { ApplicationStatus } from '../../data/types'
+import { applicationStatusTone } from '../../lib/status'
 
 const toneClasses: Record<string, string> = {
   neutral: 'bg-fog-soft text-slate border-fog',
@@ -9,8 +9,8 @@ const toneClasses: Record<string, string> = {
   pine: 'bg-pine-soft text-pine border-pine/30',
 }
 
-export function StatusBadge({ status, className }: { status: RequestStatus; className?: string }) {
-  const tone = statusTone(status)
+export function StatusBadge({ status, className }: { status: ApplicationStatus; className?: string }) {
+  const tone = applicationStatusTone(status)
   return (
     <span
       className={clsx(
@@ -26,7 +26,7 @@ export function StatusBadge({ status, className }: { status: RequestStatus; clas
           'bg-pine': tone === 'pine',
         })}
       />
-      {statusLabels[status]}
+      {applicationStatusLabels[status]}
     </span>
   )
 }

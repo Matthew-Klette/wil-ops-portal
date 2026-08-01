@@ -9,17 +9,17 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { IconPlus } from '../../components/icons'
 import { formatDate } from '../../lib/status'
 
-const roleLabel: Record<Role, string> = { admin: 'Admin', staff: 'Staff', client: 'Client' }
+const roleLabel: Record<Role, string> = { admin: 'Admin', recruiter: 'Recruiter', job_seeker: 'Job Seeker' }
 const palette = ['#D9642C', '#3F6B54', '#3D4552']
 
 export function UserManagement() {
-  const { users: userList, getClientOrgById, createUser, toggleUserActive } = useData()
+  const { users: userList, getCompanyById, createUser, toggleUserActive } = useData()
   const [showForm, setShowForm] = useState(false)
   const [roleFilter, setRoleFilter] = useState<'all' | Role>('all')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [title, setTitle] = useState('')
-  const [role, setRole] = useState<Role>('staff')
+  const [role, setRole] = useState<Role>('recruiter')
 
   const filtered = roleFilter === 'all' ? userList : userList.filter((u) => u.role === roleFilter)
 
@@ -36,7 +36,7 @@ export function UserManagement() {
     setName('')
     setEmail('')
     setTitle('')
-    setRole('staff')
+    setRole('recruiter')
     setShowForm(false)
   }
 
@@ -48,7 +48,7 @@ export function UserManagement() {
     <div>
       <PageHeader
         title="User Management"
-        subtitle="Invite teammates and manage access across WIL-Ops."
+        subtitle="Invite teammates and manage access across the platform."
         crumbs={[{ label: 'Dashboard', to: '/admin' }, { label: 'User Management' }]}
         actions={
           <button
@@ -78,7 +78,7 @@ export function UserManagement() {
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ravi.patel@wil-ops.com"
+                placeholder="ravi.patel@example.com"
                 className="rounded-lg border border-fog bg-paper px-3.5 py-2.5 text-sm outline-none focus:border-signal"
               />
             </div>
@@ -87,7 +87,7 @@ export function UserManagement() {
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Operations Associate"
+                placeholder="Talent Recruiter"
                 className="rounded-lg border border-fog bg-paper px-3.5 py-2.5 text-sm outline-none focus:border-signal"
               />
             </div>
@@ -99,8 +99,8 @@ export function UserManagement() {
                 className="rounded-lg border border-fog bg-paper px-3.5 py-2.5 text-sm outline-none focus:border-signal"
               >
                 <option value="admin">Admin</option>
-                <option value="staff">Staff</option>
-                <option value="client">Client</option>
+                <option value="recruiter">Recruiter</option>
+                <option value="job_seeker">Job Seeker</option>
               </select>
             </div>
             <div className="flex items-center gap-2 sm:col-span-2">
@@ -123,7 +123,7 @@ export function UserManagement() {
       )}
 
       <div className="mb-4 flex flex-wrap gap-2">
-        {(['all', 'admin', 'staff', 'client'] as const).map((r) => (
+        {(['all', 'admin', 'recruiter', 'job_seeker'] as const).map((r) => (
           <button
             key={r}
             onClick={() => setRoleFilter(r)}
@@ -144,7 +144,7 @@ export function UserManagement() {
           <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 border-b border-fog px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-slate-soft md:grid">
             <span>Name</span>
             <span>Role</span>
-            <span>Client account</span>
+            <span>Company</span>
             <span>Last active</span>
             <span className="text-right">Status</span>
           </div>
@@ -163,7 +163,7 @@ export function UserManagement() {
                 </div>
                 <span className="text-sm text-slate">{roleLabel[u.role]}</span>
                 <span className="text-sm text-slate-soft">
-                  {u.clientOrgId ? getClientOrgById(u.clientOrgId)?.name : '—'}
+                  {u.companyId ? getCompanyById(u.companyId)?.name : '—'}
                 </span>
                 <span className="font-mono text-xs text-slate-soft">{formatDate(u.lastActive)}</span>
                 <div className="flex items-center gap-3 md:justify-end">

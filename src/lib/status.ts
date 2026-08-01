@@ -1,45 +1,41 @@
-import type { RequestPriority, RequestStatus } from '../data/types'
+import type { ApplicationStatus } from '../data/types'
 
-export const STATUS_ORDER: RequestStatus[] = [
+export const APPLICATION_STATUS_ORDER: ApplicationStatus[] = [
   'submitted',
   'in_review',
-  'in_progress',
-  'awaiting_client',
-  'resolved',
+  'interview',
+  'offered',
 ]
 
-export function statusTone(status: RequestStatus): 'neutral' | 'signal' | 'pine' {
+export function applicationStatusTone(status: ApplicationStatus): 'neutral' | 'signal' | 'pine' {
   switch (status) {
     case 'submitted':
     case 'in_review':
       return 'neutral'
-    case 'in_progress':
-    case 'awaiting_client':
+    case 'interview':
       return 'signal'
-    case 'resolved':
-    case 'closed':
+    case 'offered':
       return 'pine'
+    case 'rejected':
+    case 'withdrawn':
+      return 'neutral'
     default:
       return 'neutral'
   }
 }
 
-export function priorityTone(priority: RequestPriority): 'neutral' | 'signal' {
-  return priority === 'high' || priority === 'urgent' ? 'signal' : 'neutral'
-}
-
-/** Who the request is currently sitting with, regardless of who's viewing it. */
-export function waitingOnLabel(status: RequestStatus): string | null {
+/** Who the application is currently sitting with, regardless of who's viewing it. */
+export function applicationWaitingOnLabel(status: ApplicationStatus): string | null {
   switch (status) {
     case 'submitted':
     case 'in_review':
-    case 'in_progress':
-      return 'Awaiting Staff'
-    case 'awaiting_client':
-      return 'Awaiting Client'
-    case 'resolved':
-      return 'Awaiting Client Confirmation'
-    case 'closed':
+      return 'Awaiting Recruiter'
+    case 'interview':
+      return 'Interview in Progress'
+    case 'offered':
+      return 'Awaiting Your Response'
+    case 'rejected':
+    case 'withdrawn':
       return null
   }
 }

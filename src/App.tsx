@@ -1,7 +1,8 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { DataProvider } from './context/DataContext'
 import { AuthProvider } from './context/AuthContext'
-import { RequestsProvider } from './context/RequestsContext'
+import { ListingsProvider } from './context/ListingsContext'
+import { ChatProvider } from './context/ChatContext'
 import { AppShell } from './components/shell/AppShell'
 import { ProtectedRoute } from './components/shell/ProtectedRoute'
 import { RolePicker } from './pages/RolePicker'
@@ -12,59 +13,69 @@ import { UserManagement } from './pages/admin/UserManagement'
 import { RolePermissionsPage } from './pages/admin/RolePermissionsPage'
 import { ActivityLogPage } from './pages/admin/ActivityLogPage'
 
-import { StaffDashboard } from './pages/staff/StaffDashboard'
-import { RequestList } from './pages/staff/RequestList'
-import { StaffRequestDetail } from './pages/staff/StaffRequestDetail'
-import { StaffRequestMessages } from './pages/staff/StaffRequestMessages'
-import { Reports } from './pages/staff/Reports'
+import { RecruiterDashboard } from './pages/recruiter/RecruiterDashboard'
+import { ManageListings } from './pages/recruiter/ManageListings'
+import { NewListing } from './pages/recruiter/NewListing'
+import { ListingApplicants } from './pages/recruiter/ListingApplicants'
+import { ApplicationReview } from './pages/recruiter/ApplicationReview'
+import { ApplicationChat as RecruiterApplicationChat } from './pages/recruiter/ApplicationChat'
+import { Reports } from './pages/recruiter/Reports'
 
-import { ClientDashboard } from './pages/client/ClientDashboard'
-import { MyRequests } from './pages/client/MyRequests'
-import { NewRequest } from './pages/client/NewRequest'
-import { ClientRequestDetail } from './pages/client/ClientRequestDetail'
+import { JobSeekerDashboard } from './pages/jobseeker/JobSeekerDashboard'
+import { BrowseListings } from './pages/jobseeker/BrowseListings'
+import { ListingDetail } from './pages/jobseeker/ListingDetail'
+import { MyApplications } from './pages/jobseeker/MyApplications'
+import { ApplicationDetail } from './pages/jobseeker/ApplicationDetail'
+import { ApplicationChat as JobSeekerApplicationChat } from './pages/jobseeker/ApplicationChat'
 
 export default function App() {
   return (
     <DataProvider>
-    <AuthProvider>
-      <RequestsProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<RolePicker />} />
+      <AuthProvider>
+        <ListingsProvider>
+          <ChatProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<RolePicker />} />
 
-            <Route element={<ProtectedRoute role="admin" />}>
-              <Route element={<AppShell />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/users" element={<UserManagement />} />
-                <Route path="/admin/roles" element={<RolePermissionsPage />} />
-                <Route path="/admin/activity" element={<ActivityLogPage />} />
-              </Route>
-            </Route>
+                <Route element={<ProtectedRoute role="admin" />}>
+                  <Route element={<AppShell />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/users" element={<UserManagement />} />
+                    <Route path="/admin/roles" element={<RolePermissionsPage />} />
+                    <Route path="/admin/activity" element={<ActivityLogPage />} />
+                  </Route>
+                </Route>
 
-            <Route element={<ProtectedRoute role="staff" />}>
-              <Route element={<AppShell />}>
-                <Route path="/staff" element={<StaffDashboard />} />
-                <Route path="/staff/requests" element={<RequestList />} />
-                <Route path="/staff/requests/:id" element={<StaffRequestDetail />} />
-                <Route path="/staff/requests/:id/messages" element={<StaffRequestMessages />} />
-                <Route path="/staff/reports" element={<Reports />} />
-              </Route>
-            </Route>
+                <Route element={<ProtectedRoute role="recruiter" />}>
+                  <Route element={<AppShell />}>
+                    <Route path="/recruiter" element={<RecruiterDashboard />} />
+                    <Route path="/recruiter/listings" element={<ManageListings />} />
+                    <Route path="/recruiter/listings/new" element={<NewListing />} />
+                    <Route path="/recruiter/listings/:id" element={<ListingApplicants />} />
+                    <Route path="/recruiter/applications/:id" element={<ApplicationReview />} />
+                    <Route path="/recruiter/applications/:id/chat" element={<RecruiterApplicationChat />} />
+                    <Route path="/recruiter/reports" element={<Reports />} />
+                  </Route>
+                </Route>
 
-            <Route element={<ProtectedRoute role="client" />}>
-              <Route element={<AppShell />}>
-                <Route path="/client" element={<ClientDashboard />} />
-                <Route path="/client/requests" element={<MyRequests />} />
-                <Route path="/client/requests/new" element={<NewRequest />} />
-                <Route path="/client/requests/:id" element={<ClientRequestDetail />} />
-              </Route>
-            </Route>
+                <Route element={<ProtectedRoute role="job_seeker" />}>
+                  <Route element={<AppShell />}>
+                    <Route path="/job_seeker" element={<JobSeekerDashboard />} />
+                    <Route path="/job_seeker/listings" element={<BrowseListings />} />
+                    <Route path="/job_seeker/listings/:id" element={<ListingDetail />} />
+                    <Route path="/job_seeker/applications" element={<MyApplications />} />
+                    <Route path="/job_seeker/applications/:id" element={<ApplicationDetail />} />
+                    <Route path="/job_seeker/applications/:id/chat" element={<JobSeekerApplicationChat />} />
+                  </Route>
+                </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </RequestsProvider>
-    </AuthProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </ChatProvider>
+        </ListingsProvider>
+      </AuthProvider>
     </DataProvider>
   )
 }

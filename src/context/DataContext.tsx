@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import type { ActivityLogEntry, ClientOrg, PermissionKey, Role, RolePermissions, User } from '../data/types'
+import type { ActivityLogEntry, Company, PermissionKey, Role, RolePermissions, User } from '../data/types'
 
 interface NewUserInput {
   name: string
@@ -13,11 +13,11 @@ interface NewUserInput {
 interface DataContextValue {
   loading: boolean
   users: User[]
-  clientOrgs: ClientOrg[]
+  companies: Company[]
   rolePermissions: RolePermissions[]
   activityLog: ActivityLogEntry[]
   getUserById: (id: string) => User | undefined
-  getClientOrgById: (id: string) => ClientOrg | undefined
+  getCompanyById: (id: string) => Company | undefined
   createUser: (input: NewUserInput) => Promise<User>
   toggleUserActive: (id: string) => Promise<void>
   updateRolePermission: (role: Role, key: PermissionKey, value: boolean) => Promise<void>
@@ -33,14 +33,17 @@ function mapUser(row: any): User {
     email: row.email,
     role: row.role,
     title: row.title,
-    clientOrgId: row.client_org_id ?? undefined,
+    companyId: row.company_id ?? undefined,
     active: row.active,
     lastActive: row.last_active,
     initialColor: row.initial_color,
+    headline: row.headline ?? undefined,
+    bio: row.bio ?? undefined,
+    resumeUrl: row.resume_url ?? undefined,
   }
 }
 
-function mapClientOrg(row: any): ClientOrg {
+function mapCompany(row: any): Company {
   return {
     id: row.id,
     name: row.name,
@@ -61,7 +64,7 @@ function mapActivity(row: any): ActivityLogEntry {
 export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<User[]>([])
-  const [clientOrgs, setClientOrgs] = useState<ClientOrg[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [rolePermissions, setRolePermissions] = useState<RolePermissions[]>([])
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([])
 
@@ -83,14 +86,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     async function loadAll() {
-      const [orgsRes] = await Promise.all([
-        supabase.from('client_orgs').select('*'),
+      const [companiesRes] = await Promise.all([
+        supabase.from('companies').select('*'),
         refetchUsers(),
         refetchRolePermissions(),
         refetchActivityLog(),
       ])
       if (cancelled) return
-      setClientOrgs((orgsRes.data ?? []).map(mapClientOrg))
+      setCompanies((companiesRes.data ?? []).map(mapCompany))
       setLoading(false)
     }
     loadAll()
@@ -112,11 +115,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     () => ({
       loading,
       users,
-      clientOrgs,
+      companies,
       rolePermissions,
       activityLog,
       getUserById: (id) => users.find((u) => u.id === id),
-      getClientOrgById: (id) => clientOrgs.find((c) => c.id === id),
+      getCompanyById: (id) => companies.find((c) => c.id === id),
       createUser: async (input) => {
         const id = `u-${crypto.randomUUID()}`
         const now = new Date().toISOString()
@@ -189,7 +192,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         })
       },
     }),
-    [loading, users, clientOrgs, rolePermissions, activityLog],
+    [loading, users, companies, rolePermissions, activityLog],
   )
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

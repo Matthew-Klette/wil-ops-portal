@@ -1,9 +1,9 @@
 import clsx from 'clsx'
-import type { RequestStatus } from '../../data/types'
-import { waitingOnLabel } from '../../lib/status'
+import type { ApplicationStatus } from '../../data/types'
+import { applicationWaitingOnLabel } from '../../lib/status'
 
-export function WaitingOn({ status, className }: { status: RequestStatus; className?: string }) {
-  const label = waitingOnLabel(status)
+export function WaitingOn({ status, className }: { status: ApplicationStatus; className?: string }) {
+  const label = applicationWaitingOnLabel(status)
   if (!label) return null
 
   return (

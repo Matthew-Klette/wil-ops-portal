@@ -6,8 +6,8 @@ const STORAGE_KEY = 'wil-ops:currentUserId'
 
 const DEFAULT_USER_BY_ROLE: Record<Role, string> = {
   admin: 'u-morgan',
-  staff: 'u-james',
-  client: 'u-priya',
+  recruiter: 'u-james',
+  job_seeker: 'u-priya',
 }
 
 interface AuthContextValue {

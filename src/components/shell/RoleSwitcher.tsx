@@ -6,7 +6,7 @@ import type { Role } from '../../data/types'
 import { roleTitle } from '../../nav'
 import { IconChevronDown } from '../icons'
 
-const roles: Role[] = ['admin', 'staff', 'client']
+const roles: Role[] = ['admin', 'recruiter', 'job_seeker']
 
 export function RoleSwitcher() {
   const { currentUser, switchRole } = useAuth()

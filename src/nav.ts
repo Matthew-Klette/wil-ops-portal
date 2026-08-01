@@ -1,5 +1,5 @@
 import type { Role } from './data/types'
-import { IconActivity, IconChart, IconGrid, IconList, IconShield, IconUsers } from './components/icons'
+import { IconActivity, IconChart, IconFile, IconGrid, IconList, IconShield, IconUsers } from './components/icons'
 
 export interface NavItem {
   label: string
@@ -15,19 +15,20 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'Roles & Permissions', path: '/admin/roles', icon: IconShield },
     { label: 'Activity Log', path: '/admin/activity', icon: IconActivity },
   ],
-  staff: [
-    { label: 'Dashboard', path: '/staff', icon: IconGrid, end: true },
-    { label: 'Requests', path: '/staff/requests', icon: IconList },
-    { label: 'Reports', path: '/staff/reports', icon: IconChart },
+  recruiter: [
+    { label: 'Dashboard', path: '/recruiter', icon: IconGrid, end: true },
+    { label: 'Listings', path: '/recruiter/listings', icon: IconList },
+    { label: 'Reports', path: '/recruiter/reports', icon: IconChart },
   ],
-  client: [
-    { label: 'Dashboard', path: '/client', icon: IconGrid, end: true },
-    { label: 'My Requests', path: '/client/requests', icon: IconList },
+  job_seeker: [
+    { label: 'Dashboard', path: '/job_seeker', icon: IconGrid, end: true },
+    { label: 'Browse Jobs', path: '/job_seeker/listings', icon: IconList },
+    { label: 'My Applications', path: '/job_seeker/applications', icon: IconFile },
   ],
 }
 
 export const roleTitle: Record<Role, string> = {
   admin: 'Admin',
-  staff: 'Staff',
-  client: 'Client',
+  recruiter: 'Recruiter',
+  job_seeker: 'Job Seeker',
 }

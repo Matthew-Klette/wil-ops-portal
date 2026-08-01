@@ -8,7 +8,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatDateTime } from '../../lib/status'
 
-const roleLabel: Record<Role, string> = { admin: 'Admin', staff: 'Staff', client: 'Client' }
+const roleLabel: Record<Role, string> = { admin: 'Admin', recruiter: 'Recruiter', job_seeker: 'Job Seeker' }
 
 export function ActivityLogPage() {
   const { activityLog, users } = useData()
@@ -26,7 +26,7 @@ export function ActivityLogPage() {
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        {(['all', 'admin', 'staff', 'client'] as const).map((r) => (
+        {(['all', 'admin', 'recruiter', 'job_seeker'] as const).map((r) => (
           <button
             key={r}
             onClick={() => setFilter(r)}

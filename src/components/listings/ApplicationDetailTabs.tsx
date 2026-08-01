@@ -3,20 +3,18 @@ import clsx from 'clsx'
 import { PageHeader, type Crumb } from '../ui/PageHeader'
 import { StatusBadge } from '../ui/StatusBadge'
 import { WaitingOn } from '../ui/WaitingOn'
-import type { RequestStatus } from '../../data/types'
+import type { ApplicationStatus } from '../../data/types'
 
-export function RequestDetailTabs({
+export function ApplicationDetailTabs({
   title,
-  code,
   crumbs,
   status,
   baseUrl,
   messageCount,
 }: {
   title: string
-  code: string
   crumbs: Crumb[]
-  status: RequestStatus
+  status: ApplicationStatus
   baseUrl: string
   messageCount: number
 }) {
@@ -43,10 +41,10 @@ export function RequestDetailTabs({
             )
           }
         >
-          Task detail
+          Application
         </NavLink>
         <NavLink
-          to={`${baseUrl}/messages`}
+          to={`${baseUrl}/chat`}
           className={({ isActive }) =>
             clsx(
               'ml-6 border-b-2 px-1 pb-3 text-sm font-medium transition-colors',
@@ -54,10 +52,9 @@ export function RequestDetailTabs({
             )
           }
         >
-          Client communication {messageCount > 0 && <span className="text-slate-soft">({messageCount})</span>}
+          Chat {messageCount > 0 && <span className="text-slate-soft">({messageCount})</span>}
         </NavLink>
       </div>
-      <span className="font-mono text-[11px] uppercase tracking-wide text-slate-soft">{code}</span>
     </div>
   )
 }

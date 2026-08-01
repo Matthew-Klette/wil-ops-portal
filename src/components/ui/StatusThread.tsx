@@ -1,14 +1,14 @@
 import { motion } from 'framer-motion'
-import { statusLabels } from '../../data/mock'
-import type { StatusEvent } from '../../data/types'
-import { statusTone } from '../../lib/status'
+import { applicationStatusLabels } from '../../data/mock'
+import type { ApplicationStatusEvent } from '../../data/types'
+import { applicationStatusTone } from '../../lib/status'
 import { formatDateTime } from '../../lib/status'
 
-export function StatusThread({ events }: { events: StatusEvent[] }) {
+export function StatusThread({ events }: { events: ApplicationStatusEvent[] }) {
   return (
     <ol className="relative flex flex-col gap-0">
       {events.map((event, i) => {
-        const tone = statusTone(event.status)
+        const tone = applicationStatusTone(event.status)
         const isLast = i === events.length - 1
         return (
           <motion.li
@@ -38,7 +38,7 @@ export function StatusThread({ events }: { events: StatusEvent[] }) {
             </span>
             <div className="flex flex-1 flex-col gap-0.5 pt-0">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                <span className="font-display text-[15px] font-medium text-ink">{statusLabels[event.status]}</span>
+                <span className="font-display text-[15px] font-medium text-ink">{applicationStatusLabels[event.status]}</span>
                 <span className="font-mono text-[11px] text-slate-soft">{formatDateTime(event.timestamp)}</span>
               </div>
               <span className="text-sm text-slate-soft">by {event.actor}</span>

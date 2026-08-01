@@ -1,23 +1,16 @@
 import clsx from 'clsx'
-import { priorityLabels } from '../../data/mock'
-import type { RequestPriority } from '../../data/types'
+import { employmentTypeLabels } from '../../data/mock'
+import type { EmploymentType } from '../../data/types'
 
-export function PriorityBadge({ priority, className }: { priority: RequestPriority; className?: string }) {
-  const urgent = priority === 'urgent'
-  const high = priority === 'high'
+export function PriorityBadge({ employmentType, className }: { employmentType: EmploymentType; className?: string }) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium',
-        urgent
-          ? 'bg-signal text-paper'
-          : high
-            ? 'bg-signal-soft text-signal'
-            : 'bg-transparent text-slate-soft',
+        'inline-flex items-center rounded-full bg-signal-soft px-2.5 py-1 text-[11px] font-medium text-signal',
         className,
       )}
     >
-      {priorityLabels[priority]}
+      {employmentTypeLabels[employmentType]}
     </span>
   )
 }
