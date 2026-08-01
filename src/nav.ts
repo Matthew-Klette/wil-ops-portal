@@ -1,5 +1,5 @@
 import type { Role } from './data/types'
-import { IconActivity, IconChart, IconFile, IconGrid, IconList, IconShield, IconUsers } from './components/icons'
+import { IconActivity, IconChart, IconFile, IconGrid, IconList, IconMessage, IconShield, IconUsers } from './components/icons'
 
 export interface NavItem {
   label: string
@@ -14,6 +14,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     { label: 'User Management', path: '/admin/users', icon: IconUsers },
     { label: 'Roles & Permissions', path: '/admin/roles', icon: IconShield },
     { label: 'Activity Log', path: '/admin/activity', icon: IconActivity },
+    { label: 'Conversations', path: '/admin/conversations', icon: IconMessage },
   ],
   recruiter: [
     { label: 'Dashboard', path: '/recruiter', icon: IconGrid, end: true },

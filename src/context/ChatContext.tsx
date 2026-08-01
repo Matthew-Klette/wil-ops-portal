@@ -22,6 +22,7 @@ interface ChatContextValue {
   requestNotificationPermission: () => void
   getMessagesForApplication: (applicationId: string) => ChatMessage[]
   sendMessage: (input: SendMessageInput) => Promise<void>
+  clearChat: (applicationId: string) => Promise<void>
   refetchApplicationMessages: (applicationId: string) => Promise<void>
   setActiveApplicationId: (id: string | null) => void
   getUnreadCount: (applicationId: string) => number
@@ -231,6 +232,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         // their own message land.
         mergeMessages([mapMessageRow(row, input.applicationId)])
         markApplicationRead(input.applicationId)
+      },
+      clearChat: async (applicationId) => {
+        const threadId = applicationToThreadRef.current.get(applicationId)
+        if (!threadId) return
+        const { error } = await supabase.from('chat_messages').delete().eq('thread_id', threadId)
+        if (error) throw error
+        setMessages((prev) => prev.filter((m) => m.applicationId !== applicationId))
       },
       refetchApplicationMessages: async (applicationId) => {
         const threadId = applicationToThreadRef.current.get(applicationId)

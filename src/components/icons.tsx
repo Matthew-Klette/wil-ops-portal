@@ -146,6 +146,16 @@ export function IconBell(props: IconProps) {
   )
 }
 
+export function IconTrash(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7h16" />
+      <path d="M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" />
+      <path d="M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+    </svg>
+  )
+}
+
 export function IconEdit(props: IconProps) {
   return (
     <svg {...base} {...props}>

@@ -105,7 +105,14 @@ export function AppShell() {
         </header>
 
         <main className="flex-1 px-4 pb-24 pt-6 md:px-8 md:pb-10 md:pt-8">
-          <AnimatePresence mode="wait" initial={false}>
+          {/* No `mode="wait"` here on purpose: it holds the outgoing page on
+              screen until its exit animation reports complete before the
+              next route mounts. If that callback ever fails to fire (e.g. a
+              child component's cleanup runs into trouble), navigation looks
+              like it silently does nothing — clicks work, the route changes,
+              but the screen never swaps. Letting enter/exit run concurrently
+              removes that failure mode entirely. */}
+          <AnimatePresence initial={false}>
             <motion.div
               key={location.pathname}
               initial={{ opacity: 0, y: 8 }}

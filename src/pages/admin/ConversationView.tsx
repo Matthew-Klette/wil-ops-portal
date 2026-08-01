@@ -1,41 +1,39 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { useListings } from '../../context/ListingsContext'
-import { useChat } from '../../context/ChatContext'
 import { useData } from '../../context/DataContext'
 import { useAuth } from '../../context/AuthContext'
-import { ApplicationDetailTabs } from '../../components/listings/ApplicationDetailTabs'
+import { PageHeader } from '../../components/ui/PageHeader'
 import { ChatThread } from '../../components/listings/ChatThread'
 
-export function ApplicationChat() {
+export function ConversationView() {
   const { id } = useParams()
   const { currentUser } = useAuth()
   const { getApplicationById, getListing } = useListings()
-  const { getMessagesForApplication } = useChat()
   const { getUserById } = useData()
 
   const application = getApplicationById(id ?? '')
-  if (!application) return <Navigate to="/recruiter/listings" replace />
+  if (!application) return <Navigate to="/admin/conversations" replace />
 
   const listing = getListing(application.listingId)
   const applicant = getUserById(application.applicantId)
+  const recruiter = listing ? getUserById(listing.postedBy) : undefined
 
   return (
     <div className="mx-auto max-w-2xl">
-      <ApplicationDetailTabs
-        title={applicant?.name ?? 'Application'}
-        crumbs={[{ label: 'Dashboard', to: '/recruiter' }, { label: 'Listings', to: '/recruiter/listings' }, { label: listing?.code ?? '' }]}
-        status={application.status}
-        baseUrl={`/recruiter/applications/${application.id}`}
-        messageCount={getMessagesForApplication(application.id).length}
+      <PageHeader
+        title={listing?.title ?? 'Conversation'}
+        subtitle={`${applicant?.name ?? 'Applicant'} & ${recruiter?.name ?? 'Recruiter'}`}
+        crumbs={[{ label: 'Dashboard', to: '/admin' }, { label: 'Conversations', to: '/admin/conversations' }, { label: listing?.code ?? '' }]}
       />
 
       <ChatThread
         applicationId={application.id}
         currentUserId={currentUser!.id}
         currentUserName={currentUser!.name}
-        currentUserRole="recruiter"
-        otherPartyLabel={applicant?.name ?? 'the applicant'}
+        currentUserRole="admin"
+        otherPartyLabel="this conversation"
         allowClear
+        readOnly
       />
     </div>
   )

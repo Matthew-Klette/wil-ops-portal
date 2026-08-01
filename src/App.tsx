@@ -12,6 +12,8 @@ import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { UserManagement } from './pages/admin/UserManagement'
 import { RolePermissionsPage } from './pages/admin/RolePermissionsPage'
 import { ActivityLogPage } from './pages/admin/ActivityLogPage'
+import { Conversations } from './pages/admin/Conversations'
+import { ConversationView } from './pages/admin/ConversationView'
 
 import { RecruiterDashboard } from './pages/recruiter/RecruiterDashboard'
 import { ManageListings } from './pages/recruiter/ManageListings'
@@ -44,6 +46,8 @@ export default function App() {
                     <Route path="/admin/users" element={<UserManagement />} />
                     <Route path="/admin/roles" element={<RolePermissionsPage />} />
                     <Route path="/admin/activity" element={<ActivityLogPage />} />
+                    <Route path="/admin/conversations" element={<Conversations />} />
+                    <Route path="/admin/conversations/:id" element={<ConversationView />} />
                   </Route>
                 </Route>
 
