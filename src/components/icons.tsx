@@ -137,6 +137,15 @@ export function IconArrowLeft(props: IconProps) {
   )
 }
 
+export function IconBell(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 8a6 6 0 0112 0c0 4.5 1.5 6 2 7H4c.5-1 2-2.5 2-7z" />
+      <path d="M10 19a2 2 0 004 0" />
+    </svg>
+  )
+}
+
 export function IconEdit(props: IconProps) {
   return (
     <svg {...base} {...props}>

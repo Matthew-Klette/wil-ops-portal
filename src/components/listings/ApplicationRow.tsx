@@ -6,6 +6,7 @@ import { StatusBadge } from '../ui/StatusBadge'
 import { WaitingOn } from '../ui/WaitingOn'
 import { relativeTime } from '../../lib/status'
 import { IconChevronRight } from '../icons'
+import { useChat } from '../../context/ChatContext'
 
 export function ApplicationRow({
   application,
@@ -20,6 +21,9 @@ export function ApplicationRow({
   primaryColor: string
   meta?: string
 }) {
+  const { getUnreadCount } = useChat()
+  const unread = getUnreadCount(application.id)
+
   return (
     <motion.div whileHover={{ x: 2 }} transition={{ duration: 0.15 }}>
       <Link
@@ -27,7 +31,14 @@ export function ApplicationRow({
         className="group flex flex-col gap-3 rounded-xl border border-fog bg-paper-raised p-4 shadow-card transition-colors hover:border-signal/40 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
       >
         <div className="flex items-center gap-3">
-          <Avatar name={primaryLabel} color={primaryColor} size={36} />
+          <div className="relative flex-shrink-0">
+            <Avatar name={primaryLabel} color={primaryColor} size={36} />
+            {unread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-paper-raised bg-signal px-1 font-mono text-[9px] font-semibold text-paper">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
+          </div>
           <div className="flex flex-col gap-0.5">
             <h3 className="font-display text-[16px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">
               {primaryLabel}

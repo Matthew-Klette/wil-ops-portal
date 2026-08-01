@@ -2,13 +2,15 @@ import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import clsx from 'clsx'
 import { useAuth } from '../../context/AuthContext'
+import { useChat } from '../../context/ChatContext'
 import { navByRole } from '../../nav'
 import { RoleSwitcher } from './RoleSwitcher'
 import { Avatar } from '../ui/Avatar'
-import { IconLogout } from '../icons'
+import { IconBell, IconLogout } from '../icons'
 
 export function AppShell() {
   const { currentUser, logout } = useAuth()
+  const { notificationPermission, requestNotificationPermission, getTotalUnreadCount } = useChat()
   const location = useLocation()
   const navigate = useNavigate()
   const outlet = useOutlet()
@@ -16,6 +18,8 @@ export function AppShell() {
   if (!currentUser) return null
 
   const items = navByRole[currentUser.role]
+  const canChat = currentUser.role !== 'admin'
+  const unreadCount = canChat ? getTotalUnreadCount() : 0
 
   return (
     <div className="flex min-h-screen w-full bg-paper">
@@ -70,6 +74,31 @@ export function AppShell() {
           </div>
           <div className="hidden md:block" />
           <div className="flex items-center gap-3">
+            {canChat && (
+              <button
+                onClick={() => notificationPermission === 'default' && requestNotificationPermission()}
+                title={
+                  notificationPermission === 'granted'
+                    ? 'Notifications enabled'
+                    : notificationPermission === 'denied'
+                      ? 'Notifications blocked in browser settings'
+                      : 'Enable notifications for new messages'
+                }
+                className={clsx(
+                  'relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border transition-colors',
+                  notificationPermission === 'default'
+                    ? 'border-signal/40 text-signal hover:bg-signal-soft'
+                    : 'border-fog text-slate-soft hover:border-signal/40 hover:text-signal',
+                )}
+              >
+                <IconBell width={17} height={17} />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-signal px-1 font-mono text-[9px] font-semibold text-paper">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
             <RoleSwitcher />
             <Avatar name={currentUser.name} color={currentUser.initialColor} size={34} />
           </div>

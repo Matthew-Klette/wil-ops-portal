@@ -5,6 +5,9 @@ import { useAuth } from './AuthContext'
 import { useListings } from './ListingsContext'
 import { useData } from './DataContext'
 
+const BACKGROUND_POLL_MS = 6000
+const READ_STORAGE_KEY = 'wil-ops:chatLastRead'
+
 interface SendMessageInput {
   applicationId: string
   senderId: string
@@ -20,6 +23,9 @@ interface ChatContextValue {
   sendMessage: (input: SendMessageInput) => Promise<void>
   refetchApplicationMessages: (applicationId: string) => Promise<void>
   setActiveApplicationId: (id: string | null) => void
+  getUnreadCount: (applicationId: string) => number
+  getTotalUnreadCount: () => number
+  markApplicationRead: (applicationId: string) => void
 }
 
 const ChatContext = createContext<ChatContextValue | undefined>(undefined)
@@ -38,6 +44,14 @@ function mapMessageRow(row: any, applicationId: string): StoredMessage {
   }
 }
 
+function loadReadMap(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(READ_STORAGE_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth()
   const { applications, getListing } = useListings()
@@ -48,6 +62,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
   )
+  // Bumped whenever read state changes, purely to force consumers of
+  // getUnreadCount/getTotalUnreadCount to re-render (the map itself lives
+  // in a ref so it survives without triggering renders on every message).
+  const [readVersion, setReadVersion] = useState(0)
 
   // Refs so the realtime handlers below always see current data without
   // having to tear down and resubscribe the channel on every state change.
@@ -58,6 +76,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   currentUserRef.current = currentUser
   const applicationsRef = useRef(applications)
   applicationsRef.current = applications
+  const readMapRef = useRef<Record<string, string>>(loadReadMap())
 
   const mergeMessages = useCallback((incoming: StoredMessage[]) => {
     if (incoming.length === 0) return
@@ -66,6 +85,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const fresh = incoming.filter((m) => !known.has(m.id))
       return fresh.length === 0 ? prev : [...prev, ...fresh]
     })
+  }, [])
+
+  const markApplicationRead = useCallback((applicationId: string) => {
+    const me = currentUserRef.current
+    if (!me) return
+    const key = `${me.id}:${applicationId}`
+    readMapRef.current = { ...readMapRef.current, [key]: new Date().toISOString() }
+    localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(readMapRef.current))
+    setReadVersion((v) => v + 1)
   }, [])
 
   const refetch = useCallback(async () => {
@@ -80,17 +108,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const applicationToThread = new Map(threads.map((t: any) => [t.application_id, t.id]))
     threadToApplicationRef.current = threadToApplication
     applicationToThreadRef.current = applicationToThread
-    setMessages((messagesRes.data ?? []).map((r: any) => mapMessageRow(r, threadToApplication.get(r.thread_id) ?? '')))
+    mergeMessages((messagesRes.data ?? []).map((r: any) => mapMessageRow(r, threadToApplication.get(r.thread_id) ?? '')))
     setLoading(false)
-  }, [])
+  }, [mergeMessages])
 
   const notify = useCallback(
     (message: StoredMessage) => {
-      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
       const me = currentUserRef.current
       if (!me || message.senderId === me.id) return
-      // Don't interrupt someone actively looking at this exact conversation.
-      if (document.visibilityState === 'visible' && activeApplicationIdRef.current === message.applicationId) return
+
+      // Someone actively looking at this exact conversation right now —
+      // mark it read instead of leaving it as unread/notifying.
+      if (document.visibilityState === 'visible' && activeApplicationIdRef.current === message.applicationId) {
+        markApplicationRead(message.applicationId)
+        return
+      }
+
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
 
       const application = applicationsRef.current.find((a) => a.id === message.applicationId)
       if (!application) return
@@ -106,7 +140,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         tag: message.applicationId,
       })
     },
-    [getListing, getUserById],
+    [getListing, getUserById, markApplicationRead],
   )
 
   useEffect(() => {
@@ -138,8 +172,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })
 
+    // App-wide catch-up poll — deliberately not tied to any single chat
+    // being open, so messages/badges/notifications stay current no matter
+    // what page (or which app, on mobile) the user is looking at, even if
+    // a websocket event was missed or throttled in a background tab.
+    const pollInterval = window.setInterval(refetch, BACKGROUND_POLL_MS)
+
     return () => {
       supabase.removeChannel(channel)
+      window.clearInterval(pollInterval)
     }
   }, [refetch, notify, mergeMessages])
 
@@ -180,6 +221,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         // round-trip — the sender should never need to refresh to see
         // their own message land.
         mergeMessages([mapMessageRow(row, input.applicationId)])
+        markApplicationRead(input.applicationId)
       },
       refetchApplicationMessages: async (applicationId) => {
         const threadId = applicationToThreadRef.current.get(applicationId)
@@ -193,9 +235,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       },
       setActiveApplicationId: (id) => {
         activeApplicationIdRef.current = id
+        if (id) markApplicationRead(id)
       },
+      getUnreadCount: (applicationId) => {
+        const me = currentUserRef.current
+        if (!me) return 0
+        const lastRead = readMapRef.current[`${me.id}:${applicationId}`]
+        return messages.filter((m) => m.applicationId === applicationId && m.senderId !== me.id && (!lastRead || m.timestamp > lastRead))
+          .length
+      },
+      getTotalUnreadCount: () => {
+        const me = currentUserRef.current
+        if (!me) return 0
+        const myApplicationIds = applications
+          .filter((a) => (me.role === 'job_seeker' ? a.applicantId === me.id : getListing(a.listingId)?.postedBy === me.id))
+          .map((a) => a.id)
+        return myApplicationIds.reduce((sum, id) => {
+          const lastRead = readMapRef.current[`${me.id}:${id}`]
+          return sum + messages.filter((m) => m.applicationId === id && m.senderId !== me.id && (!lastRead || m.timestamp > lastRead)).length
+        }, 0)
+      },
+      markApplicationRead,
     }),
-    [loading, messages, notificationPermission, mergeMessages],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loading, messages, notificationPermission, mergeMessages, markApplicationRead, applications, readVersion],
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
