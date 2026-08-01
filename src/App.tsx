@@ -11,6 +11,7 @@ import { NotFound } from './pages/NotFound'
 
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { UserManagement } from './pages/admin/UserManagement'
+import { Companies } from './pages/admin/Companies'
 import { RolePermissionsPage } from './pages/admin/RolePermissionsPage'
 import { ActivityLogPage } from './pages/admin/ActivityLogPage'
 import { Conversations } from './pages/admin/Conversations'
@@ -46,6 +47,7 @@ export default function App() {
                   <Route element={<AppShell />}>
                     <Route path="/admin" element={<AdminDashboard />} />
                     <Route path="/admin/users" element={<UserManagement />} />
+                    <Route path="/admin/companies" element={<Companies />} />
                     <Route path="/admin/roles" element={<RolePermissionsPage />} />
                     <Route path="/admin/activity" element={<ActivityLogPage />} />
                     <Route path="/admin/conversations" element={<Conversations />} />

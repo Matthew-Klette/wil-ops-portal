@@ -1,4 +1,5 @@
-import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { useListings } from '../../context/ListingsContext'
@@ -9,15 +10,21 @@ import { Card } from '../../components/ui/Card'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
 import { StatusThread } from '../../components/ui/StatusThread'
 import { formatDate } from '../../lib/status'
-import { IconFile } from '../../components/icons'
+import { IconEdit, IconFile, IconTrash } from '../../components/icons'
 
 export function ApplicationDetail() {
   const { id } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const { currentUser } = useAuth()
-  const { getApplicationById, getListing, setApplicationStatus } = useListings()
+  const { getApplicationById, getListing, setApplicationStatus, updateApplicationDetails, deleteApplication } = useListings()
   const { getMessagesForApplication } = useChat()
   const { getCompanyById } = useData()
+
+  const [editing, setEditing] = useState(false)
+  const [draftCoverNote, setDraftCoverNote] = useState('')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const application = getApplicationById(id ?? '')
   const justApplied = Boolean((location.state as { justApplied?: boolean } | null)?.justApplied)
@@ -29,10 +36,39 @@ export function ApplicationDetail() {
   const listing = getListing(application.listingId)
   const company = listing ? getCompanyById(listing.companyId) : undefined
   const canWithdraw = !['rejected', 'withdrawn', 'offered'].includes(application.status)
+  const canEdit = ['submitted', 'in_review'].includes(application.status)
+  const canDelete = ['rejected', 'withdrawn'].includes(application.status)
 
   function handleWithdraw() {
     if (!currentUser) return
     setApplicationStatus(application!.id, 'withdrawn', currentUser.name, 'job_seeker')
+  }
+
+  function startEditing() {
+    setDraftCoverNote(application!.coverNote ?? '')
+    setEditing(true)
+  }
+
+  function handleSaveEdit(e: FormEvent) {
+    e.preventDefault()
+    updateApplicationDetails(application!.id, { coverNote: draftCoverNote.trim() || undefined, resumeUrl: application!.resumeUrl })
+    setEditing(false)
+  }
+
+  async function handleDelete() {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true)
+      return
+    }
+    setDeleting(true)
+    try {
+      await deleteApplication(application!.id)
+      navigate('/job_seeker/applications')
+    } catch (err) {
+      console.error('Failed to delete application', err)
+      setDeleting(false)
+      setConfirmingDelete(false)
+    }
   }
 
   return (
@@ -68,10 +104,47 @@ export function ApplicationDetail() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.1fr]">
         <div className="flex flex-col gap-5">
           <Card className="p-5">
-            <h2 className="mb-2 font-display text-base font-medium text-ink">Your cover note</h2>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-slate">
-              {application.coverNote || 'No cover note submitted.'}
-            </p>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="font-display text-base font-medium text-ink">Your cover note</h2>
+              {!editing && canEdit && (
+                <button
+                  onClick={startEditing}
+                  aria-label="Edit cover note"
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-slate-soft transition-colors hover:bg-fog-soft hover:text-signal"
+                >
+                  <IconEdit width={15} height={15} />
+                </button>
+              )}
+            </div>
+            {editing ? (
+              <form onSubmit={handleSaveEdit} className="flex flex-col gap-3">
+                <textarea
+                  value={draftCoverNote}
+                  onChange={(e) => setDraftCoverNote(e.target.value)}
+                  rows={4}
+                  className="resize-none rounded-lg border border-fog bg-paper px-3.5 py-2.5 text-sm leading-relaxed text-slate outline-none focus:border-signal"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    className="rounded-full bg-signal px-4 py-1.5 text-xs font-medium text-paper transition-colors hover:bg-signal/90"
+                  >
+                    Save changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="rounded-full px-4 py-1.5 text-xs font-medium text-slate-soft transition-colors hover:text-ink"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="whitespace-pre-line text-sm leading-relaxed text-slate">
+                {application.coverNote || 'No cover note submitted.'}
+              </p>
+            )}
             {application.resumeUrl && (
               <a
                 href={application.resumeUrl}
@@ -94,6 +167,28 @@ export function ApplicationDetail() {
                 className="rounded-full border border-fog px-4 py-2 text-sm font-medium text-slate transition-colors hover:border-signal/40 hover:text-signal"
               >
                 Withdraw application
+              </button>
+            </Card>
+          )}
+
+          {canDelete && (
+            <Card className="p-5">
+              <h2 className="mb-2 font-display text-base font-medium text-ink">Remove this application</h2>
+              <p className="mb-3 text-sm text-slate-soft">
+                This application is {application.status} — you can permanently delete it and its chat history.
+              </p>
+              <button
+                onClick={handleDelete}
+                onBlur={() => setConfirmingDelete(false)}
+                disabled={deleting}
+                className={
+                  confirmingDelete
+                    ? 'flex items-center gap-1.5 rounded-full bg-signal px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-signal/90'
+                    : 'flex items-center gap-1.5 rounded-full border border-fog px-4 py-2 text-sm font-medium text-slate-soft transition-colors hover:border-signal/40 hover:text-signal'
+                }
+              >
+                <IconTrash width={14} height={14} />
+                {deleting ? 'Deleting…' : confirmingDelete ? 'Confirm delete' : 'Delete application'}
               </button>
             </Card>
           )}

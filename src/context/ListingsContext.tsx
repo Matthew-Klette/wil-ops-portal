@@ -35,9 +35,15 @@ interface ListingsContextValue {
   hasApplied: (listingId: string, applicantId: string) => boolean
   createListing: (input: NewListingInput) => Promise<JobListing>
   updateListingStatus: (listingId: string, status: ListingStatus) => Promise<void>
-  updateListingDetails: (listingId: string, updates: { title: string; description: string }) => Promise<void>
+  updateListingDetails: (
+    listingId: string,
+    updates: { title: string; description: string; category: string; employmentType: EmploymentType; location: string },
+  ) => Promise<void>
+  deleteListing: (listingId: string) => Promise<void>
   applyToListing: (input: NewApplicationInput) => Promise<Application>
   setApplicationStatus: (applicationId: string, status: ApplicationStatus, actor: string, actorRole: Role, note?: string) => Promise<void>
+  updateApplicationDetails: (applicationId: string, updates: { coverNote?: string; resumeUrl: string | null }) => Promise<void>
+  deleteApplication: (applicationId: string) => Promise<void>
 }
 
 const ListingsContext = createContext<ListingsContextValue | undefined>(undefined)
@@ -175,8 +181,29 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       updateListingDetails: async (listingId, updates) => {
         await supabase
           .from('job_listings')
-          .update({ title: updates.title, description: updates.description, updated_at: new Date().toISOString() })
+          .update({
+            title: updates.title,
+            description: updates.description,
+            category: updates.category,
+            employment_type: updates.employmentType,
+            location: updates.location,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', listingId)
+      },
+      deleteListing: async (listingId) => {
+        const listing = listings.find((l) => l.id === listingId)
+        const { error } = await supabase.from('job_listings').delete().eq('id', listingId)
+        if (error) throw error
+        if (listing) {
+          await logActivity({
+            actor: 'Recruiter',
+            actorRole: 'recruiter',
+            action: 'deleted listing',
+            target: `${listing.code} · ${listing.title}`,
+            timestamp: new Date().toISOString(),
+          })
+        }
       },
       applyToListing: async (input) => {
         const id = `app-${crypto.randomUUID()}`
@@ -243,6 +270,17 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
           target: listing ? `${listing.code} · ${listing.title}` : applicationId,
           timestamp: now,
         })
+      },
+      updateApplicationDetails: async (applicationId, updates) => {
+        await supabase
+          .from('applications')
+          .update({ cover_note: updates.coverNote ?? null, resume_url: updates.resumeUrl, updated_at: new Date().toISOString() })
+          .eq('id', applicationId)
+      },
+      deleteApplication: async (applicationId) => {
+        const { error } = await supabase.from('applications').delete().eq('id', applicationId)
+        if (error) throw error
+        setApplications((prev) => prev.filter((a) => a.id !== applicationId))
       },
     }),
     [loading, listings, applications, logActivity],
