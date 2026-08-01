@@ -55,6 +55,16 @@
   }
 }
 
+/* iOS Safari auto-zooms the page on focus for any form field under 16px —
+   force 16px on mobile viewports so typing a request doesn't zoom in. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* thin, quiet scrollbars — this is an ops tool, not a marketing site */
 * {
   scrollbar-width: thin;
