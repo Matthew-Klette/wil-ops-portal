@@ -12,6 +12,7 @@ const DEFAULT_USER_BY_ROLE: Record<Role, string> = {
 
 interface AuthContextValue {
   currentUser: User | null
+  loading: boolean
   login: (role: Role) => void
   logout: () => void
   switchRole: (role: Role) => void
@@ -20,7 +21,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { users } = useData()
+  const { users, loading } = useData()
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY))
 
   // Devices persist only the chosen user id; the user record itself always
@@ -33,14 +34,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const currentUser = useMemo(() => users.find((u) => u.id === currentUserId) ?? null, [users, currentUserId])
 
+  // While the initial Supabase fetch is in flight, `users` is empty and
+  // `currentUser` would look "logged out" even though a session id is
+  // already in localStorage — surface `loading` so routing can wait
+  // instead of bouncing a refreshed page back to the role picker.
   const value = useMemo<AuthContextValue>(
     () => ({
       currentUser,
+      loading: loading && currentUserId !== null,
       login: (role) => setCurrentUserId(DEFAULT_USER_BY_ROLE[role]),
       logout: () => setCurrentUserId(null),
       switchRole: (role) => setCurrentUserId(DEFAULT_USER_BY_ROLE[role]),
     }),
-    [currentUser],
+    [currentUser, loading, currentUserId],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
