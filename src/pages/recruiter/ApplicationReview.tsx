@@ -34,8 +34,10 @@ export function ApplicationReview() {
   const { getCompanyById, getUserById } = useData()
   const [note, setNote] = useState('')
 
+  const basePath = currentUser?.role === 'admin' ? '/admin' : '/recruiter'
+
   const application = getApplicationById(id ?? '')
-  if (!application) return <Navigate to="/recruiter/listings" replace />
+  if (!application) return <Navigate to={`${basePath}/listings`} replace />
 
   const listing = getListing(application.listingId)
   const company = listing ? getCompanyById(listing.companyId) : undefined
@@ -44,7 +46,7 @@ export function ApplicationReview() {
 
   function handleAction(next: ApplicationStatus) {
     if (!currentUser) return
-    setApplicationStatus(application!.id, next, currentUser.name, 'recruiter', note.trim() || undefined)
+    setApplicationStatus(application!.id, next, currentUser.name, currentUser.role, note.trim() || undefined)
     setNote('')
   }
 
@@ -52,9 +54,9 @@ export function ApplicationReview() {
     <div className="mx-auto max-w-3xl">
       <ApplicationDetailTabs
         title={applicant?.name ?? 'Application'}
-        crumbs={[{ label: 'Dashboard', to: '/recruiter' }, { label: 'Listings', to: '/recruiter/listings' }, { label: listing?.code ?? '' }]}
+        crumbs={[{ label: 'Dashboard', to: basePath }, { label: 'Listings', to: `${basePath}/listings` }, { label: listing?.code ?? '' }]}
         status={application.status}
-        baseUrl={`/recruiter/applications/${application.id}`}
+        baseUrl={`${basePath}/applications/${application.id}`}
         messageCount={getMessagesForApplication(application.id).length}
       />
 

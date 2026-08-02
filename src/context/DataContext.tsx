@@ -30,6 +30,13 @@ interface CompanyUpdateInput {
   since: string
 }
 
+interface ProfileUpdateInput {
+  headline?: string
+  bio?: string
+  skills?: string[]
+  resumeUrl?: string | null
+}
+
 interface DataContextValue {
   loading: boolean
   users: User[]
@@ -40,6 +47,7 @@ interface DataContextValue {
   getCompanyById: (id: string) => Company | undefined
   createUser: (input: NewUserInput) => Promise<User>
   updateUser: (id: string, updates: UserUpdateInput) => Promise<void>
+  updateProfile: (id: string, updates: ProfileUpdateInput) => Promise<void>
   toggleUserActive: (id: string) => Promise<void>
   deleteUser: (id: string) => Promise<void>
   createCompany: (input: NewCompanyInput) => Promise<Company>
@@ -65,6 +73,7 @@ function mapUser(row: any): User {
     headline: row.headline ?? undefined,
     bio: row.bio ?? undefined,
     resumeUrl: row.resume_url ?? undefined,
+    skills: row.skills ?? [],
   }
 }
 
@@ -181,6 +190,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           active: true,
           lastActive: now,
           initialColor: input.initialColor,
+          skills: [],
         }
       },
       updateUser: async (id, updates) => {
@@ -203,6 +213,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
           target: updates.name,
           timestamp: new Date().toISOString(),
         })
+      },
+      updateProfile: async (id, updates) => {
+        const { error } = await supabase
+          .from('users')
+          .update({
+            ...(updates.headline !== undefined ? { headline: updates.headline || null } : {}),
+            ...(updates.bio !== undefined ? { bio: updates.bio || null } : {}),
+            ...(updates.skills !== undefined ? { skills: updates.skills } : {}),
+            ...(updates.resumeUrl !== undefined ? { resume_url: updates.resumeUrl } : {}),
+          })
+          .eq('id', id)
+        if (error) throw error
       },
       toggleUserActive: async (id) => {
         const user = users.find((u) => u.id === id)

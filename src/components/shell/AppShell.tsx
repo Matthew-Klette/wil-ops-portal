@@ -126,8 +126,10 @@ export function AppShell() {
         </main>
       </div>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-fog bg-ink md:hidden">
+      {/* Mobile bottom tab bar — min-w keeps items readable and lets the bar
+          scroll horizontally on roles with more items (e.g. admin) instead
+          of squeezing every tab into an unreadable sliver. */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex overflow-x-auto border-t border-fog bg-ink md:hidden">
         {items.map((item) => (
           <NavLink
             key={item.path}
@@ -135,7 +137,7 @@ export function AppShell() {
             end={item.end}
             className={({ isActive }) =>
               clsx(
-                'flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors',
+                'flex min-w-[72px] flex-1 flex-shrink-0 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors',
                 isActive ? 'text-signal' : 'text-paper/55',
               )
             }

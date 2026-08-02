@@ -1,3 +1,4 @@
+import { useAuth } from '../../context/AuthContext'
 import { useListings } from '../../context/ListingsContext'
 import { useData } from '../../context/DataContext'
 import { applicationStatusLabels } from '../../data/mock'
@@ -10,8 +11,10 @@ import { BarChart } from '../../components/charts/BarChart'
 const statusOrder: ApplicationStatus[] = ['submitted', 'in_review', 'interview', 'offered', 'rejected', 'withdrawn']
 
 export function Reports() {
+  const { currentUser } = useAuth()
   const { listings, applications } = useListings()
   const { users } = useData()
+  const basePath = currentUser?.role === 'admin' ? '/admin' : '/recruiter'
 
   const byStatus = statusOrder.map((s) => ({ label: applicationStatusLabels[s], value: applications.filter((a) => a.status === s).length }))
 
@@ -43,7 +46,7 @@ export function Reports() {
       <PageHeader
         title="Reports"
         subtitle="A quick read on hiring activity across the team."
-        crumbs={[{ label: 'Dashboard', to: '/recruiter' }, { label: 'Reports' }]}
+        crumbs={[{ label: 'Dashboard', to: basePath }, { label: 'Reports' }]}
       />
 
       <div className="mb-6 flex flex-wrap gap-3">

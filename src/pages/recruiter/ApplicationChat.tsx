@@ -13,8 +13,10 @@ export function ApplicationChat() {
   const { getMessagesForApplication } = useChat()
   const { getUserById } = useData()
 
+  const basePath = currentUser?.role === 'admin' ? '/admin' : '/recruiter'
+
   const application = getApplicationById(id ?? '')
-  if (!application) return <Navigate to="/recruiter/listings" replace />
+  if (!application) return <Navigate to={`${basePath}/listings`} replace />
 
   const listing = getListing(application.listingId)
   const applicant = getUserById(application.applicantId)
@@ -23,9 +25,9 @@ export function ApplicationChat() {
     <div className="mx-auto max-w-2xl">
       <ApplicationDetailTabs
         title={applicant?.name ?? 'Application'}
-        crumbs={[{ label: 'Dashboard', to: '/recruiter' }, { label: 'Listings', to: '/recruiter/listings' }, { label: listing?.code ?? '' }]}
+        crumbs={[{ label: 'Dashboard', to: basePath }, { label: 'Listings', to: `${basePath}/listings` }, { label: listing?.code ?? '' }]}
         status={application.status}
-        baseUrl={`/recruiter/applications/${application.id}`}
+        baseUrl={`${basePath}/applications/${application.id}`}
         messageCount={getMessagesForApplication(application.id).length}
       />
 
@@ -33,7 +35,7 @@ export function ApplicationChat() {
         applicationId={application.id}
         currentUserId={currentUser!.id}
         currentUserName={currentUser!.name}
-        currentUserRole="recruiter"
+        currentUserRole={currentUser!.role}
         otherPartyLabel={applicant?.name ?? 'the applicant'}
         allowClear
       />

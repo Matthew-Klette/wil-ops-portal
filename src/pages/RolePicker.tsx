@@ -135,11 +135,9 @@ export function RolePicker() {
       <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 md:px-14 lg:px-16">
         <div className="mx-auto flex w-full max-w-md flex-col gap-8">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="flex flex-col gap-1.5">
-            <span className="font-mono text-[11px] uppercase tracking-wide text-signal">Sign in to preview</span>
-            <h2 className="font-display text-2xl font-medium tracking-tight text-ink">Choose your view</h2>
-            <p className="text-sm text-slate-soft">
-              This is a design prototype — no real accounts. Pick a role to sign in as that person's mock account.
-            </p>
+            <span className="font-mono text-[11px] uppercase tracking-wide text-signal">Sign in</span>
+            <h2 className="font-display text-2xl font-medium tracking-tight text-ink">Choose your role</h2>
+            <p className="text-sm text-slate-soft">Select a role to continue to your dashboard.</p>
           </motion.div>
 
           <div className="flex flex-col gap-3">

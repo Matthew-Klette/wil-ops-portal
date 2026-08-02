@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import clsx from 'clsx'
+import { useAuth } from '../../context/AuthContext'
 import { useData } from '../../context/DataContext'
 import type { Role } from '../../data/types'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -13,6 +14,7 @@ const roleLabel: Record<Role, string> = { admin: 'Admin', recruiter: 'Recruiter'
 const palette = ['#D9642C', '#3F6B54', '#3D4552']
 
 export function UserManagement() {
+  const { currentUser } = useAuth()
   const { users: userList, companies, getCompanyById, createUser, updateUser, toggleUserActive, deleteUser } = useData()
   const [showForm, setShowForm] = useState(false)
   const [roleFilter, setRoleFilter] = useState<'all' | Role>('all')
@@ -29,6 +31,7 @@ export function UserManagement() {
   const [draftCompanyId, setDraftCompanyId] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const filtered = roleFilter === 'all' ? userList : userList.filter((u) => u.role === roleFilter)
 
@@ -58,11 +61,21 @@ export function UserManagement() {
     setDraftRole(u.role)
     setDraftCompanyId(u.companyId ?? '')
     setEditingId(id)
+    setEditError(null)
   }
 
   async function handleSaveEdit(e: FormEvent) {
     e.preventDefault()
     if (!editingId || !draftName.trim() || !draftEmail.trim()) return
+    const target = userList.find((u) => u.id === editingId)
+    if (target?.role === 'admin' && draftRole !== 'admin') {
+      const otherAdmins = userList.filter((u) => u.role === 'admin' && u.id !== editingId)
+      if (otherAdmins.length === 0) {
+        setEditError(`Can't change ${target.name}'s role — they're the only admin. Promote someone else to admin first.`)
+        return
+      }
+    }
+    setEditError(null)
     await updateUser(editingId, {
       name: draftName.trim(),
       email: draftEmail.trim(),
@@ -216,15 +229,21 @@ export function UserManagement() {
                       placeholder="Title"
                       className="rounded-lg border border-fog bg-paper px-3.5 py-2 text-sm outline-none focus:border-signal"
                     />
-                    <select
-                      value={draftRole}
-                      onChange={(e) => setDraftRole(e.target.value as Role)}
-                      className="rounded-lg border border-fog bg-paper px-3.5 py-2 text-sm outline-none focus:border-signal"
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="recruiter">Recruiter</option>
-                      <option value="job_seeker">Job Seeker</option>
-                    </select>
+                    {u.id === currentUser?.id ? (
+                      <div className="flex items-center rounded-lg border border-fog bg-fog-soft px-3.5 py-2 text-sm text-slate-soft">
+                        {roleLabel[draftRole]} (can't change your own role)
+                      </div>
+                    ) : (
+                      <select
+                        value={draftRole}
+                        onChange={(e) => setDraftRole(e.target.value as Role)}
+                        className="rounded-lg border border-fog bg-paper px-3.5 py-2 text-sm outline-none focus:border-signal"
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="recruiter">Recruiter</option>
+                        <option value="job_seeker">Job Seeker</option>
+                      </select>
+                    )}
                     {draftRole === 'recruiter' && (
                       <select
                         value={draftCompanyId}
@@ -240,6 +259,7 @@ export function UserManagement() {
                       </select>
                     )}
                   </div>
+                  {editError && editingId === u.id && <p className="text-xs text-signal">{editError}</p>}
                   <div className="flex items-center gap-2">
                     <button
                       type="submit"
@@ -249,7 +269,10 @@ export function UserManagement() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEditingId(null)}
+                      onClick={() => {
+                        setEditingId(null)
+                        setEditError(null)
+                      }}
                       className="rounded-full px-4 py-1.5 text-xs font-medium text-slate-soft transition-colors hover:text-ink"
                     >
                       Cancel

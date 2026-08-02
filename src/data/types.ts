@@ -13,6 +13,7 @@ export interface User {
   headline?: string
   bio?: string
   resumeUrl?: string
+  skills: string[]
 }
 
 export interface Company {

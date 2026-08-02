@@ -24,6 +24,7 @@ import { ListingApplicants } from './pages/recruiter/ListingApplicants'
 import { ApplicationReview } from './pages/recruiter/ApplicationReview'
 import { ApplicationChat as RecruiterApplicationChat } from './pages/recruiter/ApplicationChat'
 import { Reports } from './pages/recruiter/Reports'
+import { ProfileSetup as RecruiterProfileSetup } from './pages/recruiter/ProfileSetup'
 
 import { JobSeekerDashboard } from './pages/jobseeker/JobSeekerDashboard'
 import { BrowseListings } from './pages/jobseeker/BrowseListings'
@@ -31,6 +32,7 @@ import { ListingDetail } from './pages/jobseeker/ListingDetail'
 import { MyApplications } from './pages/jobseeker/MyApplications'
 import { ApplicationDetail } from './pages/jobseeker/ApplicationDetail'
 import { ApplicationChat as JobSeekerApplicationChat } from './pages/jobseeker/ApplicationChat'
+import { ProfileSetup as JobSeekerProfileSetup } from './pages/jobseeker/ProfileSetup'
 
 export default function App() {
   return (
@@ -52,6 +54,11 @@ export default function App() {
                     <Route path="/admin/activity" element={<ActivityLogPage />} />
                     <Route path="/admin/conversations" element={<Conversations />} />
                     <Route path="/admin/conversations/:id" element={<ConversationView />} />
+                    <Route path="/admin/listings" element={<ManageListings />} />
+                    <Route path="/admin/listings/:id" element={<ListingApplicants />} />
+                    <Route path="/admin/applications/:id" element={<ApplicationReview />} />
+                    <Route path="/admin/applications/:id/chat" element={<RecruiterApplicationChat />} />
+                    <Route path="/admin/reports" element={<Reports />} />
                   </Route>
                 </Route>
 
@@ -64,6 +71,7 @@ export default function App() {
                     <Route path="/recruiter/applications/:id" element={<ApplicationReview />} />
                     <Route path="/recruiter/applications/:id/chat" element={<RecruiterApplicationChat />} />
                     <Route path="/recruiter/reports" element={<Reports />} />
+                    <Route path="/recruiter/profile" element={<RecruiterProfileSetup />} />
                   </Route>
                 </Route>
 
@@ -75,6 +83,7 @@ export default function App() {
                     <Route path="/job_seeker/applications" element={<MyApplications />} />
                     <Route path="/job_seeker/applications/:id" element={<ApplicationDetail />} />
                     <Route path="/job_seeker/applications/:id/chat" element={<JobSeekerApplicationChat />} />
+                    <Route path="/job_seeker/profile" element={<JobSeekerProfileSetup />} />
                   </Route>
                 </Route>
 

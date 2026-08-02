@@ -98,7 +98,7 @@ export function AdminDashboard() {
               return (
                 <Link
                   key={a.id}
-                  to={`/recruiter/applications/${a.id}`}
+                  to={`/admin/applications/${a.id}`}
                   className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm transition-colors first:pt-0 last:pb-0 hover:text-signal"
                 >
                   <span>

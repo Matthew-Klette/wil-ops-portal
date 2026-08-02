@@ -21,6 +21,8 @@ export function ManageListings() {
   const { currentUser } = useAuth()
   const { listings, getApplicationsForListing } = useListings()
   const [filter, setFilter] = useState<Filter>('all')
+  const basePath = currentUser?.role === 'admin' ? '/admin' : '/recruiter'
+  const visibleFilters = currentUser?.role === 'admin' ? filters.filter((f) => f.key !== 'mine') : filters
 
   let filtered = listings
   if (filter === 'mine') filtered = filtered.filter((l) => l.postedBy === currentUser?.id)
@@ -33,21 +35,23 @@ export function ManageListings() {
     <div>
       <PageHeader
         title="Listings"
-        subtitle="Every job listing posted by your team."
-        crumbs={[{ label: 'Dashboard', to: '/recruiter' }, { label: 'Listings' }]}
+        subtitle={currentUser?.role === 'admin' ? 'Every job listing across the platform.' : 'Every job listing posted by your team.'}
+        crumbs={[{ label: 'Dashboard', to: basePath }, { label: 'Listings' }]}
         actions={
-          <Link
-            to="/recruiter/listings/new"
-            className="flex items-center gap-2 rounded-full bg-signal px-4 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-signal/90"
-          >
-            <IconPlus width={16} height={16} />
-            Post a job
-          </Link>
+          currentUser?.role !== 'admin' && (
+            <Link
+              to={`${basePath}/listings/new`}
+              className="flex items-center gap-2 rounded-full bg-signal px-4 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-signal/90"
+            >
+              <IconPlus width={16} height={16} />
+              Post a job
+            </Link>
+          )
         }
       />
 
       <div className="mb-5 flex flex-wrap gap-2">
-        {filters.map((f) => (
+        {visibleFilters.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
@@ -66,7 +70,7 @@ export function ManageListings() {
       ) : (
         <div className="flex flex-col gap-2.5">
           {filtered.map((l) => (
-            <ListingRow key={l.id} listing={l} to={`/recruiter/listings/${l.id}`} applicantCount={getApplicationsForListing(l.id).length} />
+            <ListingRow key={l.id} listing={l} to={`${basePath}/listings/${l.id}`} applicantCount={getApplicationsForListing(l.id).length} />
           ))}
         </div>
       )}

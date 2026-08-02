@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import { useListings } from '../../context/ListingsContext'
 import { useData } from '../../context/DataContext'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -18,8 +19,10 @@ const employmentTypes: EmploymentType[] = ['full_time', 'part_time', 'contract',
 export function ListingApplicants() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { currentUser } = useAuth()
   const { getListing, getApplicationsForListing, updateListingStatus, updateListingDetails, deleteListing } = useListings()
   const { getCompanyById, getUserById } = useData()
+  const basePath = currentUser?.role === 'admin' ? '/admin' : '/recruiter'
 
   const [editing, setEditing] = useState(false)
   const [draftTitle, setDraftTitle] = useState('')
@@ -31,7 +34,7 @@ export function ListingApplicants() {
   const [deleting, setDeleting] = useState(false)
 
   const listing = getListing(id ?? '')
-  if (!listing) return <Navigate to="/recruiter/listings" replace />
+  if (!listing) return <Navigate to={`${basePath}/listings`} replace />
 
   const company = getCompanyById(listing.companyId)
   const applications = [...getApplicationsForListing(listing.id)].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
@@ -66,7 +69,7 @@ export function ListingApplicants() {
     setDeleting(true)
     try {
       await deleteListing(listing!.id)
-      navigate('/recruiter/listings')
+      navigate(`${basePath}/listings`)
     } catch (err) {
       console.error('Failed to delete listing', err)
       setDeleting(false)
@@ -78,7 +81,7 @@ export function ListingApplicants() {
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title={editing ? 'Edit listing' : listing.title}
-        crumbs={[{ label: 'Dashboard', to: '/recruiter' }, { label: 'Listings', to: '/recruiter/listings' }, { label: listing.code }]}
+        crumbs={[{ label: 'Dashboard', to: basePath }, { label: 'Listings', to: `${basePath}/listings` }, { label: listing.code }]}
         actions={
           !editing && (
             <div className="flex items-center gap-2">
@@ -223,7 +226,7 @@ export function ListingApplicants() {
                   <ApplicationRow
                     key={a.id}
                     application={a}
-                    to={`/recruiter/applications/${a.id}`}
+                    to={`${basePath}/applications/${a.id}`}
                     primaryLabel={applicant?.name ?? 'Applicant'}
                     primaryColor={applicant?.initialColor ?? '#3D4552'}
                     meta={applicant?.headline}
